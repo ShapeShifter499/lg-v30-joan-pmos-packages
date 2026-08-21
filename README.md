@@ -1,4 +1,4 @@
-# joan-pmos-packages
+# lg-v30-joan-pmos-packages
 
 postmarketOS packages for the **LG V30 (joan, msm8998)** mainline port.
 
