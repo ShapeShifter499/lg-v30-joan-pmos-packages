@@ -1,0 +1,106 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# Report the Joan GPU-firmware variant selected by the pre-alpha kernel.
+
+set -eu
+
+cmdline_file=/proc/cmdline
+cmdline=
+explain=false
+
+usage() {
+	cat <<'EOF'
+Usage: joan-firmware-variant [--cmdline TEXT | --cmdline-file PATH] [--explain]
+
+Prints "h932" only for the exact LG-H932 model or an explicit h932 override.
+All other Joan models, including LG-H932PR, select the H930-compatible set.
+The kernel override is pmos.joan_firmware_variant=h930|h932.
+EOF
+}
+
+while [ "$#" -gt 0 ]; do
+	case "$1" in
+		--cmdline)
+			[ "$#" -ge 2 ] || { echo "--cmdline needs a value" >&2; exit 2; }
+			cmdline=$2
+			shift 2
+			;;
+		--cmdline-file)
+			[ "$#" -ge 2 ] || { echo "--cmdline-file needs a path" >&2; exit 2; }
+			cmdline_file=$2
+			shift 2
+			;;
+		--explain)
+			explain=true
+			shift
+			;;
+		-h|--help)
+			usage
+			exit 0
+			;;
+		*)
+			echo "unknown option: $1" >&2
+			usage >&2
+			exit 2
+			;;
+	esac
+done
+
+if [ -z "$cmdline" ]; then
+	[ -r "$cmdline_file" ] || { echo "cannot read $cmdline_file" >&2; exit 1; }
+	cmdline=$(cat "$cmdline_file")
+fi
+
+override=
+model=
+set -f
+# Kernel command-line values used here do not contain whitespace.
+# shellcheck disable=SC2086
+set -- $cmdline
+set +f
+for word do
+	case "$word" in
+		pmos.joan_firmware_variant=*) override=${word#*=} ;;
+		androidboot.vendor.lge.model.name=*) model=${word#*=} ;;
+	esac
+done
+
+override_lower=$(printf '%s' "$override" | tr '[:upper:]' '[:lower:]')
+case "$override_lower" in
+h932)
+	variant=h932
+	reason="forced by pmos.joan_firmware_variant"
+	;;
+h930)
+	variant=h930
+	reason="forced by pmos.joan_firmware_variant"
+	;;
+"")
+	if [ "$model" = "LG-H932" ]; then
+		variant=h932
+		reason="exact bootloader model LG-H932"
+	else
+		variant=h930
+		if [ -n "$model" ]; then
+			reason="non-H932 bootloader model $model"
+		else
+			reason="model absent; safe H930-compatible fallback"
+		fi
+	fi
+	;;
+*)
+	echo "warning: ignoring invalid pmos.joan_firmware_variant=$override" >&2
+	if [ "$model" = "LG-H932" ]; then
+		variant=h932
+		reason="exact bootloader model LG-H932 after invalid override"
+	else
+		variant=h930
+		reason="H930-compatible fallback after invalid override"
+	fi
+	;;
+esac
+
+printf '%s\n' "$variant"
+if [ "$explain" = true ]; then
+	printf 'joan firmware selection: %s (%s)\n' "$variant" "$reason" >&2
+fi

@@ -1,0 +1,87 @@
+# Maintainer: Lance <Gero3977@gmail.com>
+maintainer="Lance <Gero3977@gmail.com>"
+pkgname=firmware-lge-joan
+pkgver=1.0
+pkgrel=2
+pkgdesc="LG V30 (joan) GPU, Bluetooth, modem, ADSP, IPA and WLAN firmware"
+url="https://github.com/ShapeShifter499/firmware-lge-joan"
+arch="aarch64"
+license="proprietary"
+depends="firmware-qcom-adreno-a530 linux-firmware-ath10k"
+subpackages="$pkgname-initramfs:firmware_initramfs:noarch"
+options="!check !strip !archcheck !spdx !tracedeps pmb:cross-native"
+
+_joan_commit="2489e95801110695e991394245b6d7ae66670c4e"
+_common_commit="274a1e49a783b971eb967f6afd303b3ec38c9a1b"
+_joan_url="https://raw.githubusercontent.com/TheMuppets/proprietary_vendor_lge_joan/$_joan_commit/proprietary/vendor/firmware"
+_common_url="https://raw.githubusercontent.com/TheMuppets/proprietary_vendor_lge_joan-common/$_common_commit/proprietary/vendor/firmware"
+
+source="
+	a540_gpmu.fw2::$_common_url/a540_gpmu.fw2
+	crbtfw21.tlv::$_common_url/crbtfw21.tlv
+	crnv21.bin::$_common_url/crnv21.bin
+	H930-a540_zap.mdt::$_joan_url/H930/a540_zap.mdt
+	H930-a540_zap.b00::$_joan_url/H930/a540_zap.b00
+	H930-a540_zap.b01::$_joan_url/H930/a540_zap.b01
+	H930-a540_zap.b02::$_joan_url/H930/a540_zap.b02
+	H932-a540_zap.mdt::$_joan_url/H932/a540_zap.mdt
+	H932-a540_zap.b00::$_joan_url/H932/a540_zap.b00
+	H932-a540_zap.b01::$_joan_url/H932/a540_zap.b01
+	H932-a540_zap.b02::$_joan_url/H932/a540_zap.b02
+	owner-firmware-lge-joan.tar
+	joan-firmware-variant
+	30-lge-joan-gpu.files
+	"
+
+package() {
+	local _variant
+	local _part
+
+	mkdir -p "$pkgdir/usr/lib/firmware"
+	cp -a "$srcdir/owner-firmware-lge-joan/." \
+		"$pkgdir/usr/lib/firmware/"
+	ln -s qcom/msm8998/joan/wlanmdsp.mbn \
+		"$pkgdir/usr/lib/firmware/wlanmdsp.mbn"
+
+	install -Dm644 "$srcdir/a540_gpmu.fw2" \
+		"$pkgdir/usr/lib/firmware/qcom/a540_gpmu.fw2"
+	install -Dm644 "$srcdir/crbtfw21.tlv" \
+		"$pkgdir/usr/lib/firmware/qca/crbtfw21.tlv"
+	install -Dm644 "$srcdir/crnv21.bin" \
+		"$pkgdir/usr/lib/firmware/qca/crnv21.bin"
+
+	for _variant in H930 H932; do
+		for _part in mdt b00 b01 b02; do
+			install -Dm644 "$srcdir/$_variant-a540_zap.$_part" \
+				"$pkgdir/usr/lib/firmware/qcom/lge/joan/$_variant/a540_zap.$_part"
+		done
+	done
+
+	install -Dm755 "$srcdir/joan-firmware-variant" \
+		"$pkgdir/usr/bin/joan-firmware-variant"
+}
+
+firmware_initramfs() {
+	pkgdesc="Early GPU and Bluetooth firmware list for the LG V30 initramfs"
+	depends="$pkgname=$pkgver-r$pkgrel firmware-qcom-adreno-a530"
+
+	install -Dm644 "$srcdir/30-lge-joan-gpu.files" \
+		"$subpkgdir/usr/share/mkinitfs/files/30-lge-joan-gpu.files"
+}
+
+sha512sums="
+8ee54e1515e02b825d0d172da5760d8f0b895396b8992cc0fe8d00f64074eadf4a02646f6700b52f2fe8a5a55216cc3222872c0a2da8fc5da50c39a1023d2e06  a540_gpmu.fw2
+44b860ed2a32063cecd90c841dad936825a0a55ab222de58a982c5efb5f6dd25d89cdefe4ce5187454aaee6e938b76012aa04335b56d807f39c69597d2149c88  crbtfw21.tlv
+0ded50b80a03b6e599c0f9dbbd12c680994d39761281d329986b16c4303275faef005bcb001c4143538518b14d071283f25f2be8da4cbd4a2656e9e371ff0ddf  crnv21.bin
+efb3096b7500f6ca5fb7daea497f13777bc7500c0aad3f3eacc096aaea2d51ccd284eea51df153bfccf05c18240d12e907b3ac0244bacd86fe452bccb5b04485  H930-a540_zap.mdt
+9d231b62edf2d44cfd0830736b92049c9bc9400e2506383b240d6374aa78cc0fa2db86363f4a9cd3d44d613baf0a152132be858b5d8853af957c5a20c81a4e07  H930-a540_zap.b00
+ba5496d9b3696b1f4b0e2973ea015e25bb01a8b5d5fb97ed85709d3cfa1fbc9bc27495ec62f4450ebafcbec0063efb694104386487f3df699b5be4fccd34fe13  H930-a540_zap.b01
+49280211147ba839b535ddb855022f7bd2b8d787e61083235390e539ce57320c7c7277f70d8c660859845bef88982707bd558f05f5b8e6bbf3dd451ba1035951  H930-a540_zap.b02
+dc7093c67eff724d85e312b2f1944e9b027a31b0d1086aba21eb5ca3dfa2ef8719fa5fb85ae565128b4bb65b9df08855ceed45942682ea712680ab82cbc87685  H932-a540_zap.mdt
+9d231b62edf2d44cfd0830736b92049c9bc9400e2506383b240d6374aa78cc0fa2db86363f4a9cd3d44d613baf0a152132be858b5d8853af957c5a20c81a4e07  H932-a540_zap.b00
+a7ff158077dc9cec576546d1cf6d1805bb150dd122bea1dfe6752101df90c10d3c0b15a2c9a41681ab1bcd5ce7e06d870339ee8da0f83523078497c58f58e205  H932-a540_zap.b01
+49280211147ba839b535ddb855022f7bd2b8d787e61083235390e539ce57320c7c7277f70d8c660859845bef88982707bd558f05f5b8e6bbf3dd451ba1035951  H932-a540_zap.b02
+3600c9f15fb782a49445d3267b0001a55073e0f7a025464df97ed70498faf849897f5830661175728a74501ebaa3fef26c537cf0235920d2208ca3cb6cb81fcd  owner-firmware-lge-joan.tar
+97db2a591ae3936d5f6129501df751db9eca7154574c45967d7d9bc57d81d65ebc2c66ba49083dc47f46eb21ef2c64641429c024aca6140c385a8af4ef5798fe  joan-firmware-variant
+8d9fa1043dd358cf097b5d8eaa3e5233362d8ff2461392b638dad4ed22bb6f26351006c5fa820120db40d2badfa635a95b6f924b395c97824c25e2ff65d2c42c  30-lge-joan-gpu.files
+"
