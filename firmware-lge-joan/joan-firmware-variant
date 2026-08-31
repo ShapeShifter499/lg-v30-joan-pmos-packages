@@ -1,106 +1,87 @@
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Report the Joan GPU-firmware variant selected by the pre-alpha kernel.
+# Report which Joan A540 zap-shader payload this system will actually load.
 
 set -eu
 
-cmdline_file=/proc/cmdline
-cmdline=
+fwdir=/usr/lib/firmware
+dt_glob='/proc/device-tree/soc*/gpu*/zap-shader/firmware-name'
+fw_name=
 explain=false
 
 usage() {
-	cat <<'EOF'
-Usage: joan-firmware-variant [--cmdline TEXT | --cmdline-file PATH] [--explain]
+	cat <<'USAGE'
+Usage: joan-firmware-variant [--fw-name TEXT] [--fwdir DIR] [--dt-file PATH]
+                             [--explain]
 
-Prints "h932" only for the exact LG-H932 model or an explicit h932 override.
-All other Joan models, including LG-H932PR, select the H930-compatible set.
-The kernel override is pmos.joan_firmware_variant=h930|h932.
-EOF
+Prints "h930" or "h932": which A540 zap payload this system loads.
+
+Two mechanisms are supported, because the two products select differently.
+The device tree names the payload directly when the boot image was built with
+a per-variant DTB (the pre-alpha images do this).  Otherwise the kernel asks
+for the generic qcom/a540_zap.mdt and the choice was made by installing either
+firmware-lge-joan-zap-h930 or -zap-h932; in that case the installed file is
+compared against the per-model copies to see which one it is.
+
+An exact LG-H932 needs h932.  Every other Joan variant, H932PR included, uses
+h930.  There is deliberately no fallback: a wrong answer here means a payload
+signed for another model.
+USAGE
 }
 
 while [ "$#" -gt 0 ]; do
 	case "$1" in
-		--cmdline)
-			[ "$#" -ge 2 ] || { echo "--cmdline needs a value" >&2; exit 2; }
-			cmdline=$2
-			shift 2
-			;;
-		--cmdline-file)
-			[ "$#" -ge 2 ] || { echo "--cmdline-file needs a path" >&2; exit 2; }
-			cmdline_file=$2
-			shift 2
-			;;
-		--explain)
-			explain=true
-			shift
-			;;
-		-h|--help)
-			usage
-			exit 0
-			;;
-		*)
-			echo "unknown option: $1" >&2
-			usage >&2
-			exit 2
-			;;
+		--fw-name) fw_name=${2:?--fw-name needs a value}; shift 2 ;;
+		--fwdir) fwdir=${2:?--fwdir needs a value}; shift 2 ;;
+		--dt-file) dt_glob=${2:?--dt-file needs a value}; shift 2 ;;
+		--explain) explain=true; shift ;;
+		-h|--help) usage; exit 0 ;;
+		*) echo "unknown option: $1" >&2; usage >&2; exit 2 ;;
 	esac
 done
 
-if [ -z "$cmdline" ]; then
-	[ -r "$cmdline_file" ] || { echo "cannot read $cmdline_file" >&2; exit 1; }
-	cmdline=$(cat "$cmdline_file")
+if [ -z "$fw_name" ]; then
+	set -f
+	# shellcheck disable=SC2086
+	set -- $dt_glob
+	set +f
+	[ -r "$1" ] && fw_name=$(tr -d '\0' < "$1")
 fi
 
-override=
-model=
-set -f
-# Kernel command-line values used here do not contain whitespace.
-# shellcheck disable=SC2086
-set -- $cmdline
-set +f
-for word do
-	case "$word" in
-		pmos.joan_firmware_variant=*) override=${word#*=} ;;
-		androidboot.vendor.lge.model.name=*) model=${word#*=} ;;
-	esac
-done
+variant=
+reason=
 
-override_lower=$(printf '%s' "$override" | tr '[:upper:]' '[:lower:]')
-case "$override_lower" in
-h932)
-	variant=h932
-	reason="forced by pmos.joan_firmware_variant"
-	;;
-h930)
-	variant=h930
-	reason="forced by pmos.joan_firmware_variant"
-	;;
-"")
-	if [ "$model" = "LG-H932" ]; then
-		variant=h932
-		reason="exact bootloader model LG-H932"
-	else
-		variant=h930
-		if [ -n "$model" ]; then
-			reason="non-H932 bootloader model $model"
-		else
-			reason="model absent; safe H930-compatible fallback"
-		fi
-	fi
-	;;
-*)
-	echo "warning: ignoring invalid pmos.joan_firmware_variant=$override" >&2
-	if [ "$model" = "LG-H932" ]; then
-		variant=h932
-		reason="exact bootloader model LG-H932 after invalid override"
-	else
-		variant=h930
-		reason="H930-compatible fallback after invalid override"
-	fi
-	;;
+case "$fw_name" in
+	*/H932/*) variant=h932; reason="device tree names the H932 payload" ;;
+	*/H930/*) variant=h930; reason="device tree names the H930-compatible payload" ;;
 esac
+
+if [ -z "$variant" ]; then
+	# Generic path: identify the installed payload by content.
+	generic=$fwdir/qcom/a540_zap.mdt
+	if [ ! -r "$generic" ]; then
+		echo "no zap payload at $generic and no per-variant device tree entry" >&2
+		echo "install firmware-lge-joan-zap-h930 or firmware-lge-joan-zap-h932" >&2
+		exit 1
+	fi
+	sum=$(sha256sum "$generic" | cut -d' ' -f1)
+	for _v in H930 H932; do
+		model=$fwdir/qcom/lge/joan/$_v/a540_zap.mdt
+		[ -r "$model" ] || continue
+		if [ "$sum" = "$(sha256sum "$model" | cut -d' ' -f1)" ]; then
+			variant=$(echo "$_v" | tr '[:upper:]' '[:lower:]')
+			reason="installed payload matches the $_v copy"
+			break
+		fi
+	done
+fi
+
+if [ -z "$variant" ]; then
+	echo "installed zap payload matches neither the H930 nor the H932 copy" >&2
+	exit 1
+fi
 
 printf '%s\n' "$variant"
 if [ "$explain" = true ]; then
-	printf 'joan firmware selection: %s (%s)\n' "$variant" "$reason" >&2
+	printf 'joan zap payload: %s (%s)\n' "$variant" "$reason" >&2
 fi

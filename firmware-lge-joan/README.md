@@ -18,10 +18,10 @@ it intentionally does not contain proprietary firmware binaries.
   of Git (`owner-firmware-lge-joan.tar`).
 - A postmarketOS mkinitfs file list containing both ZAP sets, both Bluetooth
   files, and the official `firmware-qcom-adreno-a530` PM4/PFP files.
-- `joan-firmware-variant`, a diagnostic command that reports the same model
-  selection used by the pre-alpha kernel integration.
+- `joan-firmware-variant`, a diagnostic command that reports which ZAP payload
+  this system will actually load.
 
-The two signed sets live at distinct paths:
+Both signed sets are always installed, at distinct paths:
 
 ```text
 /usr/lib/firmware/qcom/lge/joan/H930/a540_zap.*
@@ -30,22 +30,30 @@ The two signed sets live at distinct paths:
 /usr/lib/firmware/qca/crnv21.bin
 ```
 
-They are not switched with late userspace symlinks. Mainline probes the GPU too
-early for that to be race-free. The associated pre-alpha kernel reads the exact
-bootloader model from:
+## Choosing your ZAP payload — required
 
-```text
-androidboot.vendor.lge.model.name=LG-H932
+The kernel asks for a single path, `qcom/a540_zap.mdt`, so **you must install
+exactly one** of these:
+
+```sh
+apk add firmware-lge-joan-zap-h930   # H930, US998, H932PR, every other variant
+apk add firmware-lge-joan-zap-h932   # an exact LG-H932, nothing else
 ```
 
-Only exact `LG-H932` selects the H932 files; `LG-H932PR` and all other models
-select the H930-compatible set. This follows LineageOS's Joan firmware-selection
-intent while avoiding its substring match. A recovery override is available:
+They conflict with each other by design. There is deliberately no default: the
+H932 payload is signed differently, and guessing wrong hands a device firmware
+signed for another model. Installing neither leaves nothing at the path the
+kernel requests, and the GPU comes up without its zap shader.
 
-```text
-pmos.joan_firmware_variant=h930
-pmos.joan_firmware_variant=h932
-```
+`LG-H932PR` is **not** an H932 and takes the h930 package. Check what you have
+with `joan-firmware-variant --explain`.
+
+They are not switched with late userspace symlinks: mainline probes the GPU too
+early for that to be race-free. The pre-alpha images instead select at build
+time by writing the per-model path into the boot image's device tree, which is
+how every other Qualcomm board picks its zap-shader firmware; on those images
+neither `-zap-` package is needed and `joan-firmware-variant` reads the choice
+straight out of the device tree.
 
 Reference implementation: LineageOS
 [`android_device_lge_joan/releasetools/device_check.sh`](https://github.com/LineageOS/android_device_lge_joan/blob/0053e5025795da63f8aa94ce86bd831a1004ca4a/releasetools/device_check.sh).
