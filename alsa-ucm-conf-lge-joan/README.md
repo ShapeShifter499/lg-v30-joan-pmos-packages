@@ -4,7 +4,7 @@ ALSA Use Case Manager profile for the LG V30 (joan).
 
 Signed-off-by: Lance <Gero3977@gmail.com>
 Assisted-by: Claude-Code:claude-opus-5
-Date: 2026-08-21
+Date: 2026-08-31
 
 ## Why this exists
 
@@ -15,14 +15,22 @@ audio devices at all. This package is the missing userspace half.
 
 ## What it does
 
-joan does **not** use the WCD9340's analog outputs; they are not wired to a
-transducer on this board. The headphone jack is driven by an **ES9218P "Quad
-DAC"** fed over **quaternary MI2S**. So the profile routes MultiMedia1 to
-`QUAT_MI2S_RX` rather than the usual `SLIMBUS_0_RX`, and hands the sound server
-the DAC's own volume and switch controls so the desktop slider drives real
-hardware attenuation.
+Two outputs are offered, and neither goes through the WCD9340's analog block,
+so the profile routes MultiMedia1 to an MI2S backend rather than the usual
+`SLIMBUS_0_RX`:
 
-Every control and value in the profile is one verified working on hardware.
+| device | path | priority |
+|---|---|---|
+| `Headphones` | `QUAT_MI2S_RX` → **ES9218P "Quad DAC"** → jack | 200 |
+| `Speaker` | `TERT_MI2S_RX` → **TFA9872** → loudspeaker | 150 |
+
+Each device enables only its own backend mixer, so selecting one output does
+not also feed the other, and each hands the sound server the real hardware
+volume control so the desktop slider drives actual attenuation.
+
+Every route and control in the profile is one confirmed by ear on hardware.
+The two starting volume values are deliberately conservative choices rather
+than measured ones; see the notes below.
 
 ## Matching
 
@@ -49,9 +57,16 @@ driver `sdm845`, long name `LG-V30` → `conf.d/sdm845/LG-V30.conf`.
   driver, i.e. 48 kHz stereo 16-bit. PipeWire resamples other rates
   transparently, so this is not user-visible, but it should become
   rate-dependent eventually.
-- **No loudspeaker device.** joan's speaker is a TFA9872 on quaternary TDM /
-  i2c_7 which has no mainline driver yet. When that lands it gets its own
-  `SectionDevice` here.
+- **No speaker protection.** mainline's `tfa989x` drives the TFA9872 with the
+  CoolFlux DSP bypassed, so SpeakerBoost and the excursion limiter are not
+  running. `Speaker Playback Volume` is 0..15; `TDMSPKG` is an *attenuation*
+  in hardware (0 = loudest) so the control is registered inverted and the
+  scale runs the usual way round, 15 being loudest. The profile comes up at 8
+  and lets the user raise it. Keep source levels low.
+- **No earpiece device.** joan's earpiece is the WCD9340 EAR PA reached via
+  RX INT0. The chain has been made to power up, but nobody has confirmed it
+  audible, so it is deliberately not offered here. Add a `SectionDevice` when
+  someone has actually listened.
 
 ## Related
 
