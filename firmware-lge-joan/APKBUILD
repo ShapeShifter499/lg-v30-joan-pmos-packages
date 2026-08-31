@@ -2,8 +2,8 @@
 maintainer="Lance <Gero3977@gmail.com>"
 pkgname=firmware-lge-joan
 pkgver=1.0
-pkgrel=3
-pkgdesc="LG V30 (joan) GPU, Bluetooth, modem, ADSP, IPA and WLAN firmware"
+pkgrel=4
+pkgdesc="LG V30 (joan) GPU and Bluetooth firmware (redistributable set)"
 url="https://github.com/ShapeShifter499/firmware-lge-joan"
 arch="aarch64"
 license="proprietary"
@@ -32,7 +32,6 @@ source="
 	H932-a540_zap.b00::$_joan_url/H932/a540_zap.b00
 	H932-a540_zap.b01::$_joan_url/H932/a540_zap.b01
 	H932-a540_zap.b02::$_joan_url/H932/a540_zap.b02
-	owner-firmware-lge-joan.tar
 	joan-firmware-variant
 	30-lge-joan-gpu.files
 	"
@@ -42,10 +41,6 @@ package() {
 	local _part
 
 	mkdir -p "$pkgdir/usr/lib/firmware"
-	cp -a "$srcdir/owner-firmware-lge-joan/." \
-		"$pkgdir/usr/lib/firmware/"
-	ln -s qcom/msm8998/joan/wlanmdsp.mbn \
-		"$pkgdir/usr/lib/firmware/wlanmdsp.mbn"
 
 	install -Dm644 "$srcdir/a540_gpmu.fw2" \
 		"$pkgdir/usr/lib/firmware/qcom/a540_gpmu.fw2"
@@ -113,7 +108,6 @@ dc7093c67eff724d85e312b2f1944e9b027a31b0d1086aba21eb5ca3dfa2ef8719fa5fb85ae56512
 9d231b62edf2d44cfd0830736b92049c9bc9400e2506383b240d6374aa78cc0fa2db86363f4a9cd3d44d613baf0a152132be858b5d8853af957c5a20c81a4e07  H932-a540_zap.b00
 a7ff158077dc9cec576546d1cf6d1805bb150dd122bea1dfe6752101df90c10d3c0b15a2c9a41681ab1bcd5ce7e06d870339ee8da0f83523078497c58f58e205  H932-a540_zap.b01
 49280211147ba839b535ddb855022f7bd2b8d787e61083235390e539ce57320c7c7277f70d8c660859845bef88982707bd558f05f5b8e6bbf3dd451ba1035951  H932-a540_zap.b02
-3600c9f15fb782a49445d3267b0001a55073e0f7a025464df97ed70498faf849897f5830661175728a74501ebaa3fef26c537cf0235920d2208ca3cb6cb81fcd  owner-firmware-lge-joan.tar
 575d5d43eed3ad5dec3a43ea3ce4745e21a6d431770bacb4d11f2644d22be59e780c7b8ce4aaa6132c3252504cdf7c12d3dc68cdf7fb0744ed4defed247eea09  joan-firmware-variant
 c8dde5e93fc60756802de5ba1eaa6f8c8edc5629b271bae54d6cb84fc27a6938fdb2cc8dcd3135140fe8f5efad844e8071234de7a4d170e1b641de1efe3febf9  30-lge-joan-gpu.files
 "

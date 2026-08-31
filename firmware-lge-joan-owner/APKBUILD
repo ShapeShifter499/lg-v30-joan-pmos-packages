@@ -1,0 +1,87 @@
+# Maintainer: Lance <Gero3977@gmail.com>
+maintainer="Lance <Gero3977@gmail.com>"
+pkgname=firmware-lge-joan-owner
+pkgver=1.0
+pkgrel=0
+pkgdesc="LG V30 (joan) modem, ADSP, IPA and WLAN firmware, extracted by the device owner"
+url="https://github.com/ShapeShifter499/lg-v30-joan-pmos-packages"
+arch="aarch64"
+license="proprietary"
+depends="firmware-lge-joan"
+options="!check !strip !archcheck !spdx !tracedeps pmb:cross-native"
+
+# Only the manifest is a source.  The tarball deliberately is not: a tar's hash
+# depends on file order, timestamps and uid, so pinning one would pin one
+# person's extraction and make this package unbuildable by anyone else.  The
+# payload is verified per file instead, which IS reproducible.
+source="owner-firmware-sources.tsv"
+
+_owner_tar="${JOAN_OWNER_TAR:-$startdir/owner-firmware-lge-joan.tar}"
+
+prepare() {
+	default_prepare
+
+	if ! [ -f "$_owner_tar" ]; then
+		error "Missing owner-extracted firmware: $_owner_tar"
+		error ""
+		error "The modem, ADSP, IPA and WLAN blobs are not redistributable and"
+		error "are not in this repository.  Extract them from your own device"
+		error "and place the tar beside this APKBUILD, or point JOAN_OWNER_TAR"
+		error "at it.  The expected contents, with sizes and sha256, are listed"
+		error "in owner-firmware-sources.tsv next to this file."
+		error ""
+		error "The GPU and Bluetooth firmware needs none of this: build"
+		error "firmware-lge-joan on its own if that is all you need."
+		return 1
+	fi
+
+	mkdir -p "$srcdir/owner"
+	tar -xf "$_owner_tar" -C "$srcdir/owner"
+
+	msg "Verifying owner firmware against the manifest"
+	local _src _dst _size _sha _actual _file _missing=0 _bad=0 _seen=0 _expected
+	while IFS="$(printf '\t')" read -r _src _dst _size _sha || [ -n "$_src" ]; do
+		case "$_src" in \#*|"") continue ;; esac
+
+		_file="$srcdir/owner/$_src"
+		if ! [ -f "$_file" ]; then
+			error "missing from tarball: $_src"
+			_missing=$((_missing + 1))
+			continue
+		fi
+		_seen=$((_seen + 1))
+		_actual=$(sha256sum "$_file" | cut -d' ' -f1)
+		if [ "$_actual" != "$_sha" ]; then
+			error "sha256 mismatch: $_src"
+			error "  expected $_sha"
+			error "  actual   $_actual"
+			_bad=$((_bad + 1))
+		fi
+	done < "$srcdir/owner-firmware-sources.tsv"
+
+	_expected=$(grep -vc '^#' "$srcdir/owner-firmware-sources.tsv")
+	if [ "$_missing" -ne 0 ] || [ "$_bad" -ne 0 ]; then
+		error "owner firmware failed verification:" \
+			"$_missing missing, $_bad mismatched"
+		return 1
+	fi
+	if [ "$_seen" -eq 0 ]; then
+		error "manifest yielded no records; is owner-firmware-sources.tsv intact?"
+		return 1
+	fi
+	msg "verified $_seen owner firmware files"
+}
+
+package() {
+	local _src _dst _size _sha
+	while IFS="$(printf '\t')" read -r _src _dst _size _sha || [ -n "$_src" ]; do
+		case "$_src" in \#*|"") continue ;; esac
+		install -Dm644 "$srcdir/owner/$_src" "$pkgdir/usr/lib/firmware/$_dst"
+	done < "$srcdir/owner-firmware-sources.tsv"
+
+	# ath10k looks for this at the top of the firmware tree.
+	ln -s qcom/msm8998/joan/wlanmdsp.mbn "$pkgdir/usr/lib/firmware/wlanmdsp.mbn"
+}
+sha512sums="
+5338bbc9a0e716feb7e877d9b7224041fefe0c48e3f4ed9fe738012c1f720395b7ca607331361665f0058f28010fae86683e6cb3e0311da48570831dbb0e7176  owner-firmware-sources.tsv
+"
