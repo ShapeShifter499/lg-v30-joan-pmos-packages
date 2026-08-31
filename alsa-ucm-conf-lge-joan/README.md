@@ -23,10 +23,13 @@ so the profile routes MultiMedia1 to an MI2S backend rather than the usual
 |---|---|---|
 | `Headphones` | `QUAT_MI2S_RX` → **ES9218P "Quad DAC"** → jack | 200 |
 | `Speaker` | `TERT_MI2S_RX` → **TFA9872** → loudspeaker | 150 |
+| `Earpiece` | `SLIMBUS_0_RX` → **WCD9340 RX INT0** → EAR PA | 50 |
 
-Each device enables only its own backend mixer, so selecting one output does
-not also feed the other, and each hands the sound server the real hardware
-volume control so the desktop slider drives actual attenuation.
+Each device enables only its own path and tears it down again on disable, and
+each hands the sound server the real hardware volume control so the desktop
+slider drives actual attenuation. Nothing is enabled at the verb level: the
+earpiece needs `SLIMBUS_0_RX` **on** while the other two need it **off**, so
+that state belongs to the devices rather than to the use case.
 
 Every route and control in the profile is one confirmed by ear on hardware.
 The two starting volume values are deliberately conservative choices rather
@@ -63,10 +66,14 @@ driver `sdm845`, long name `LG-V30` → `conf.d/sdm845/LG-V30.conf`.
   in hardware (0 = loudest) so the control is registered inverted and the
   scale runs the usual way round, 15 being loudest. The profile comes up at 8
   and lets the user raise it. Keep source levels low.
-- **No earpiece device.** joan's earpiece is the WCD9340 EAR PA reached via
-  RX INT0. The chain has been made to power up, but nobody has confirmed it
-  audible, so it is deliberately not offered here. Add a `SectionDevice` when
-  someone has actually listened.
+- **Earpiece gain is an offset, not a dB value.** `RX0 Digital Volume` is
+  `SOC_SINGLE_S8_TLV`, so the number is an *offset from the minimum*. On its
+  (-84, +40) range, **84 is 0 dB and 0 would be -84 dB, i.e. silence** — the
+  opposite of what it looks like. 84 is the verified value; `EAR PA Volume` 4
+  is +6 dB.
+- **The earpiece is not muted by jack insert.** It was heard with the jack
+  reporting `[on]`, so the two paths are independent as far as the codec is
+  concerned. Routing policy is left to the sound server.
 
 ## Related
 
