@@ -1,44 +1,37 @@
 # firmware-lge-joan-owner
 
-The LG V30 (joan) modem, ADSP, IPA and WLAN firmware, extracted by the owner of
-the device.
+The LG V30 (joan) modem, ADSP, IPA and WLAN firmware.
 
-## Why this is separate
+## Where these come from
 
-`firmware-lge-joan` carries the redistributable set: the A540 GPU firmware, the
-zap shader payloads and the Bluetooth files, all fetched from commit-pinned
-[TheMuppets](https://github.com/TheMuppets) vendor trees. Anyone can build it.
+[`ShapeShifter499/firmware-lge-joan-blobs`](https://github.com/ShapeShifter499/firmware-lge-joan-blobs),
+fetched as a commit-pinned archive. That is how blobs are hosted for other
+postmarketOS devices — TheMuppets, FairBlobs, sdm845-mainline and others all
+keep firmware in its own repository rather than in the packaging tree.
 
-The files in *this* package cannot be fetched. Each builder extracts them from
-their own device. Keeping them in a separate package means the GPU and
-Bluetooth firmware still builds for someone who has not done that — which was
-not true when both sets lived in one package.
+These images live in the phone's `modem` and `dsp` partitions rather than the
+vendor partition, so unlike the GPU and Bluetooth firmware there is nothing
+upstream to fetch: of the 48 files, 47 appear nowhere in TheMuppets' joan
+trees. Without them there is no cellular, no audio DSP and no WLAN.
 
-## What you need
+## Integrity
 
-`owner-firmware-lge-joan.tar`, beside this `APKBUILD` or pointed at by
-`JOAN_OWNER_TAR`. It is not in this repository and must not be committed.
-
-`owner-firmware-sources.tsv` lists every file the tarball must contain, with
-its path inside the tar, where it is installed, its size and its **sha256**.
-Every file is verified against that manifest before packaging; a missing or
-altered file fails the build and names itself.
-
-## Why the tarball itself is not checksummed
-
-A tar's hash depends on file ordering, timestamps and uid, so two people
-extracting identical firmware get different tarballs. Pinning one would pin one
-person's extraction and make the package unbuildable by everyone else — which
-is exactly what happened before this split. The payload is verified per file
-instead, which is reproducible across builders.
+Two independent checks. The archive is pinned by `sha512` like any other
+source, and every file inside is then verified against `MANIFEST.tsv` by
+`sha256` and size. A truncated or swapped blob fails the build and names
+itself, rather than producing a package with a hole in it.
 
 ## Building
 
 ```sh
-cp /path/to/owner-firmware-lge-joan.tar firmware-lge-joan-owner/
 pmbootstrap build firmware-lge-joan-owner
 ```
 
-Signed-off-by: Lance <Gero3977@gmail.com>
-Assisted-by: Claude-Code:claude-opus-5
-Date: 2026-08-31
+Nothing else is needed — no device, no extraction.
+
+## Licence
+
+Installs Qualcomm's licence and third-party attribution notice to
+`/usr/share/licenses/firmware-lge-joan-owner/`, the same files and layout
+`firmware-qcom-adreno` uses. The licence's redistribution conditions require
+shipping the terms file and leaving notices intact.

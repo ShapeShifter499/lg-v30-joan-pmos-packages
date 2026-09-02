@@ -2,11 +2,11 @@
 maintainer="Lance <Gero3977@gmail.com>"
 pkgname=firmware-lge-joan
 pkgver=1.0
-pkgrel=4
+pkgrel=5
 pkgdesc="LG V30 (joan) GPU and Bluetooth firmware (redistributable set)"
 url="https://github.com/ShapeShifter499/firmware-lge-joan"
 arch="aarch64"
-license="proprietary"
+license="custom"
 depends="firmware-qcom-adreno-a530 linux-firmware-ath10k"
 subpackages="
 	$pkgname-zap-h930:zap_h930
@@ -33,6 +33,8 @@ source="
 	H932-a540_zap.b01::$_joan_url/H932/a540_zap.b01
 	H932-a540_zap.b02::$_joan_url/H932/a540_zap.b02
 	joan-firmware-variant
+	NOTICE.txt
+	LICENSE.qcom
 	30-lge-joan-gpu.files
 	"
 
@@ -58,6 +60,14 @@ package() {
 
 	install -Dm755 "$srcdir/joan-firmware-variant" \
 		"$pkgdir/usr/bin/joan-firmware-variant"
+
+	# Same files and paths firmware-qcom-adreno uses.  The licence's
+	# redistribution conditions require shipping the terms file and leaving
+	# notices intact, so these are not optional for us.
+	install -Dm644 "$srcdir/LICENSE.qcom" \
+		"$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+	install -Dm644 "$srcdir/NOTICE.txt" \
+		"$pkgdir/usr/share/licenses/$pkgname/NOTICE"
 }
 
 # The A540 zap shader is the one payload that differs between Joan models: an
@@ -110,4 +120,6 @@ a7ff158077dc9cec576546d1cf6d1805bb150dd122bea1dfe6752101df90c10d3c0b15a2c9a41681
 49280211147ba839b535ddb855022f7bd2b8d787e61083235390e539ce57320c7c7277f70d8c660859845bef88982707bd558f05f5b8e6bbf3dd451ba1035951  H932-a540_zap.b02
 575d5d43eed3ad5dec3a43ea3ce4745e21a6d431770bacb4d11f2644d22be59e780c7b8ce4aaa6132c3252504cdf7c12d3dc68cdf7fb0744ed4defed247eea09  joan-firmware-variant
 c8dde5e93fc60756802de5ba1eaa6f8c8edc5629b271bae54d6cb84fc27a6938fdb2cc8dcd3135140fe8f5efad844e8071234de7a4d170e1b641de1efe3febf9  30-lge-joan-gpu.files
+9c6644633bcb061e2a134d2076be4bf24d6097aace62366d94daa97e15433e38cf2a965f7a986e133de036d88dbac81fe3e03c34e41c53755904ea2e5326c7a9  NOTICE.txt
+4d5321baa343d04309c47bcb3ea8f630f3e2d7142225539f5c27afb3bd6b94c3c082814ad299016c945818bcb9ca3a0b7d2c30aec52d0448694dc44f0dda32f5  LICENSE.qcom
 "

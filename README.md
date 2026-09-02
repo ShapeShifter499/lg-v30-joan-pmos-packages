@@ -16,6 +16,10 @@ image, and board-specific audio configuration.
 |---|---|---|
 | `firmware-lge-joan/` | `firmware-lge-joan` | GPU, Bluetooth, modem, ADSP, IPA and WLAN firmware, fetched from the vendor blobs at build time |
 | `alsa-ucm-conf-lge-joan/` | `alsa-ucm-conf-lge-joan` | ALSA UCM profile so PipeWire exposes the sound card instead of a dummy output |
+| `joan-imsd/` | `joan-imsd` | 3GPP IMS SIP UA (VoLTE). OpenRC `joan-imsd`, CLI `joan-ims dial` |
+| `lge-joan-volte/` | `lge-joan-volte` | First-boot metapackage: MM + 81voltd + rmtfs + calls + joan-imsd |
+
+A new pmOS user follows `FIRST-INSTALL-VOLTE.md`.
 
 ## Why the audio package exists
 
@@ -64,3 +68,36 @@ or point pmaports at this tree as an extra aports directory.
 
 - Kernel: `ShapeShifter499/linux-lg-v30-joan`
 - Port notes and audio bring-up history: `ShapeShifter499/lg-v30-port`
+
+## Firmware redistribution and takedown
+
+This repository is text-only. The proprietary modem, ADSP, IPA and WLAN
+firmware is hosted separately in
+[`ShapeShifter499/firmware-lge-joan-blobs`](https://github.com/ShapeShifter499/firmware-lge-joan-blobs)
+and fetched by commit-pinned URL, the way TheMuppets, FairBlobs and
+sdm845-mainline host blobs for other postmarketOS devices.
+
+Those images are extracted from retail device partitions and are hosted because
+there is nowhere else to fetch them from: they are not in the vendor trees
+TheMuppets publishes, and LG has left the mobile handset market and no longer
+distributes them. Hosting them is what makes cellular, audio DSP and WLAN work
+without every builder owning a second V30 to dump.
+
+No ownership of this firmware is claimed and no licence to it is granted or
+implied. All rights remain with their respective holders.
+
+Both firmware packages install Qualcomm's licence and third-party attribution
+notice to `/usr/share/licenses/<package>/`, the same files and layout
+`firmware-qcom-adreno` uses. That licence grants a limited right to redistribute
+binary code, conditioned among other things on shipping the terms file and on
+not removing or obscuring notices, so those files are a condition of the grant
+rather than a courtesy. The notice additionally carries attribution for the
+open-source code embedded in the firmware — OpenSSL, SSLeay, zlib and others —
+whose licences require it on binary redistribution.
+
+What that does not cover: the A540 zap shader is signed by LG rather than
+Qualcomm, and these images came off a retail device rather than from QTI.
+
+If you hold rights to any file here and want it removed, open an issue on this
+repository or contact the maintainer and it will be taken down. Please say
+which files are affected so the rest can keep working.
