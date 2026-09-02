@@ -1,113 +1,71 @@
 # firmware-lge-joan
 
-postmarketOS/Alpine package recipe for the LG V30 family (`joan`) early-boot
-Adreno 540 and WCN3990 Bluetooth firmware.
+Firmware for the LG V30 (joan), packaged the way postmarketOS packages firmware
+for other devices: an empty-but-for-the-licence parent with one subpackage per
+subsystem, modelled on `firmware-fxtec-qx1050` and `firmware-qcom-adreno`.
 
-Status: pre-alpha. This repository contains packaging code and source metadata;
-it intentionally does not contain proprietary firmware binaries.
+| package | contents |
+|---|---|
+| `-adreno-h930` | A540 GPU + zap shader, **H930, US998, H932PR, all non-H932** |
+| `-adreno-h932` | A540 GPU + zap shader, **exact LG-H932 only** |
+| `-bluetooth` | QCA Bluetooth firmware |
+| `-modem` | modem images (cellular) |
+| `-adsp` | audio DSP images |
+| `-ipa` | IPA images (needed for cellular data) |
+| `-wifi` | WLAN firmware and board data |
+| `-initramfs` | mkinitfs file list for early GPU/BT firmware |
 
-## What the package installs
+## Choosing the Adreno package
 
-- Qualcomm A540 GPMU firmware shared by Joan variants.
-- LG H930-compatible signed A540 ZAP firmware (used by H930, US998, and other
-  non-H932 Joan models).
-- LG H932-specific signed A540 ZAP firmware.
-- Joan-tested WCN3990 Bluetooth TLV and NVM (`crbtfw21.tlv`, `crnv21.bin`),
-  needed before the SD root filesystem is mounted.
-- An owner-extracted, hash-verified Joan modem/ADSP/IPA/WLAN tarball kept out
-  of Git (`owner-firmware-lge-joan.tar`).
-- A postmarketOS mkinitfs file list containing both ZAP sets, both Bluetooth
-  files, and the official `firmware-qcom-adreno-a530` PM4/PFP files.
-- `joan-firmware-variant`, a diagnostic command that reports which ZAP payload
-  this system will actually load.
-
-Both signed sets are always installed, at distinct paths:
-
-```text
-/usr/lib/firmware/qcom/lge/joan/H930/a540_zap.*
-/usr/lib/firmware/qcom/lge/joan/H932/a540_zap.*
-/usr/lib/firmware/qca/crbtfw21.tlv
-/usr/lib/firmware/qca/crnv21.bin
-```
-
-## Choosing your ZAP payload — required
-
-The kernel asks for a single path, `qcom/a540_zap.mdt`, so **you must install
-exactly one** of these:
+The two `-adreno-` packages conflict, and there is deliberately no default.
+Install exactly one:
 
 ```sh
-apk add firmware-lge-joan-zap-h930   # H930, US998, H932PR, every other variant
-apk add firmware-lge-joan-zap-h932   # an exact LG-H932, nothing else
+apk add firmware-lge-joan-adreno-h930   # almost everyone
+apk add firmware-lge-joan-adreno-h932   # an exact LG-H932, nothing else
 ```
 
-They conflict with each other by design. There is deliberately no default: the
-H932 payload is signed differently, and guessing wrong hands a device firmware
-signed for another model. Installing neither leaves nothing at the path the
-kernel requests, and the GPU comes up without its zap shader.
+`LG-H932PR` is **not** an H932 and takes the h930 package. Both packages print
+a warning on install, and read the bootloader model from `/proc/cmdline` to
+tell you if you picked the wrong one. After install, `joan-firmware-variant
+--explain` reports what the system will actually load.
 
-`LG-H932PR` is **not** an H932 and takes the h930 package. Check what you have
-with `joan-firmware-variant --explain`.
+The zap payload is signed per model. Installing the wrong one damages nothing,
+but the GPU refuses it and the display does not come up.
 
-They are not switched with late userspace symlinks: mainline probes the GPU too
-early for that to be race-free. The pre-alpha images instead select at build
-time by writing the per-model path into the boot image's device tree, which is
-how every other Qualcomm board picks its zap-shader firmware; on those images
-neither `-zap-` package is needed and `joan-firmware-variant` reads the choice
-straight out of the device tree.
+Only `a540_zap.mdt` and `a540_zap.b01` actually differ between the two:
+`.b00` and `.b02` are byte-identical. What varies is the signature, not the
+shader. Each package still ships a complete set, so there is no way to end up
+with a half-installed one.
 
-Reference implementation: LineageOS
-[`android_device_lge_joan/releasetools/device_check.sh`](https://github.com/LineageOS/android_device_lge_joan/blob/0053e5025795da63f8aa94ce86bd831a1004ca4a/releasetools/device_check.sh).
+## Where the firmware comes from
 
-## Firmware provenance
+Two sources. The GPU, zap and Bluetooth files are redistributable and fetched
+from commit-pinned [TheMuppets](https://github.com/TheMuppets) vendor trees.
 
-The remotely available GPU/BT files are hash-pinned to the established
-LineageOS vendor repositories maintained by TheMuppets:
+The modem, ADSP, IPA and WLAN images are not in any vendor tree — they live in
+the device's `modem` and `dsp` partitions, and 47 of those 48 files appear
+nowhere in TheMuppets' joan repositories. They are hosted in
+[`firmware-lge-joan-blobs`](https://github.com/ShapeShifter499/firmware-lge-joan-blobs)
+and fetched by pinned commit, the way `sm6115-mainline`, `TheMuppets` and
+`FairBlobs` host blobs for other devices.
 
-- `proprietary_vendor_lge_joan` commit
-  `2489e95801110695e991394245b6d7ae66670c4e`
-- `proprietary_vendor_lge_joan-common` commit
-  `274a1e49a783b971eb967f6afd303b3ec38c9a1b`
+Integrity is checked twice: the archive by `sha512`, then every file inside
+against `MANIFEST.tsv` by `sha256` and size.
 
-`firmware-sources.tsv` records each remote URL, size, and SHA-256 digest.
-`owner-firmware-sources.tsv` records all owner-extracted modem/ADSP/IPA/WLAN
-inputs by source path, destination path, size, and SHA-256. The deterministic
-owner tarball stays Git-ignored. The APKBUILD carries SHA-512 checksums for all
-package inputs.
+## A caveat on the modem images
 
-No explicit redistribution license was found for the vendor firmware. The
-firmware and owner extraction tarball remain proprietary and are not covered by
-this repository's MIT license. This recipe grants no redistribution rights;
-each builder is responsible for obtaining device firmware lawfully and for any
-redistribution decision.
+They were extracted from an **LG-US998**. Modem firmware can be region or
+carrier specific, and there is no second dump to compare against, so whether
+they are correct for an H930 or H932 is unverified. If cellular misbehaves on a
+non-US998 V30, this is the first thing to suspect.
 
-## Verify and prepare source inputs
+## Licence
 
-```sh
-./scripts/fetch-firmware.sh
-./scripts/import-owner-firmware.sh PREPARED-SOURCE-DIRECTORY
-./tests/test-selector.sh
-```
+`LICENSE` and `NOTICE` are installed to `/usr/share/licenses/firmware-lge-joan/`,
+the same files and layout `firmware-qcom-adreno` uses. The Qualcomm licence
+grants a limited right to redistribute binary code, conditioned on shipping the
+terms file and not removing notices, so both are a condition of the grant.
 
-The remote fetch and local import both fail closed on size/hash mismatches. The
-importer refuses to overwrite existing output and creates the deterministic
-ignored `owner-firmware-lge-joan.tar` expected by the APKBUILD.
-
-## Use in pmaports
-
-Copy the package files into a pmaports checkout:
-
-```sh
-./scripts/install-into-pmaports.sh /path/to/pmaports
-pmbootstrap checksum firmware-lge-joan
-pmbootstrap build firmware-lge-joan
-```
-
-The Joan device package should depend on `firmware-lge-joan-initramfs` so both
-GPU variant sets and the early Bluetooth files are available before the SD
-root filesystem is mounted.
-
-## Licensing
-
-The original scripts, tests, and package metadata in this repository are MIT
-licensed. Downloaded firmware is proprietary and excluded from Git. Source
-projects and copyright holders retain all rights to their respective files.
+The A540 zap shader is signed by LG rather than Qualcomm, and these images came
+off a retail device rather than from QTI; that is not covered by the above.
