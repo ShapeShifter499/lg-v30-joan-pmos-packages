@@ -1,71 +1,61 @@
 # firmware-lge-joan
 
-Firmware for the LG V30 (joan), packaged the way postmarketOS packages firmware
-for other devices: an empty-but-for-the-licence parent with one subpackage per
-subsystem, modelled on `firmware-fxtec-qx1050` and `firmware-qcom-adreno`.
+Firmware for the LG V30 (joan): a shared base plus one of two signing-family
+packages.
 
 | package | contents |
 |---|---|
-| `-adreno-h930` | A540 GPU + zap shader, **H930, US998, H932PR, all non-H932** |
-| `-adreno-h932` | A540 GPU + zap shader, **exact LG-H932 only** |
-| `-bluetooth` | QCA Bluetooth firmware |
-| `-modem` | modem images (cellular) |
-| `-adsp` | audio DSP images |
-| `-ipa` | IPA images (needed for cellular data) |
-| `-wifi` | WLAN firmware and board data |
-| `-initramfs` | mkinitfs file list for early GPU/BT firmware |
+| `firmware-lge-joan` | A540 GPMU + QCA Bluetooth — identical on every joan |
+| `firmware-lge-joan-h930` | modem, ADSP, IPA, WLAN, zap — **H930, US998, H932PR, all others** |
+| `firmware-lge-joan-h932` | the same set for an **exact LG-H932** |
+| `firmware-lge-joan-initramfs` | mkinitfs list for early GPU/BT firmware |
 
-## Choosing the Adreno package
-
-The two `-adreno-` packages conflict, and there is deliberately no default.
-Install exactly one:
+Install the base and exactly one family:
 
 ```sh
-apk add firmware-lge-joan-adreno-h930   # almost everyone
-apk add firmware-lge-joan-adreno-h932   # an exact LG-H932, nothing else
+apk add firmware-lge-joan firmware-lge-joan-h930   # almost everyone
+apk add firmware-lge-joan firmware-lge-joan-h932   # an exact LG-H932
 ```
 
-`LG-H932PR` is **not** an H932 and takes the h930 package. Both packages print
-a warning on install, and read the bootloader model from `/proc/cmdline` to
-tell you if you picked the wrong one. After install, `joan-firmware-variant
---explain` reports what the system will actually load.
+They conflict, and there is deliberately no default. Both warn on install and
+read the bootloader model from `/proc/cmdline` to tell you if you picked wrong.
+`LG-H932PR` is **not** an H932 and takes h930.
 
-The zap payload is signed per model. Installing the wrong one damages nothing,
-but the GPU refuses it and the display does not come up.
+## Why the split
 
-Only `a540_zap.mdt` and `a540_zap.b01` actually differ between the two:
-`.b00` and `.b02` are byte-identical. What varies is the signature, not the
-shader. Each package still ships a complete set, so there is no way to end up
-with a half-installed one.
+The H932 is the T-Mobile model, signed with different keys. Measured against
+stock firmware of the same Android release — `US99830b` and `H93230d`, both
+Pie, both reporting Qualcomm build `MPSS.AT.2.5.c1.2-00056` — **38 of 47 files
+differ**. Same build, different signatures.
+
+The nine files that do match are individual segments and cannot be reused: an
+image's `.mdt` signs the segment hash table, so a set has to come from one
+device. LineageOS draws the same line by detecting an H932 at flash time; with
+a package manager it is just a package.
+
+The one measured exception is the zap shader, where the h930 payload is known
+to run on a US998 — verified on hardware. For the modem set nobody has booted
+one family's images on another model, so h930 is the *family* set, proven on
+US998 and inferred for H930 and H932PR.
 
 ## Where the firmware comes from
 
-Two sources. The GPU, zap and Bluetooth files are redistributable and fetched
-from commit-pinned [TheMuppets](https://github.com/TheMuppets) vendor trees.
-
-The modem, ADSP, IPA and WLAN images are not in any vendor tree — they live in
-the device's `modem` and `dsp` partitions, and 47 of those 48 files appear
-nowhere in TheMuppets' joan repositories. They are hosted in
+All of it is mirrored into
 [`firmware-lge-joan-blobs`](https://github.com/ShapeShifter499/firmware-lge-joan-blobs)
-and fetched by pinned commit, the way `sm6115-mainline`, `TheMuppets` and
-`FairBlobs` host blobs for other devices.
+and pinned by commit, so a build depends on no third party staying reachable.
+The GPU and Bluetooth files originate from commit-pinned TheMuppets vendor
+trees; the rest comes off retail devices.
 
-Integrity is checked twice: the archive by `sha512`, then every file inside
-against `MANIFEST.tsv` by `sha256` and size.
+Integrity is checked twice: the archive by `sha512`, then every file against
+`MANIFEST.tsv` by `sha256` before it is installed.
 
-## A caveat on the modem images
-
-They were extracted from an **LG-US998**. Modem firmware can be region or
-carrier specific, and there is no second dump to compare against, so whether
-they are correct for an H930 or H932 is unverified. If cellular misbehaves on a
-non-US998 V30, this is the first thing to suspect.
+WLAN `board.bin` is the stock generic board data from each variant's system
+image, not per-unit factory calibration from any particular handset.
 
 ## Licence
 
-`LICENSE` and `NOTICE` are installed to `/usr/share/licenses/firmware-lge-joan/`,
-the same files and layout `firmware-qcom-adreno` uses. The Qualcomm licence
-grants a limited right to redistribute binary code, conditioned on shipping the
-terms file and not removing notices, so both are a condition of the grant.
-
-The A540 zap shader is signed by LG rather than Qualcomm, and these images came
-off a retail device rather than from QTI; that is not covered by the above.
+`LICENSE` and `NOTICE` install to `/usr/share/licenses/firmware-lge-joan/`, the
+files and layout `firmware-qcom-adreno` uses. The Qualcomm licence permits
+binary redistribution on condition the terms file ships with it and notices are
+not removed. The zap shader is LG-signed rather than Qualcomm's, and these
+images came off retail devices rather than from QTI.

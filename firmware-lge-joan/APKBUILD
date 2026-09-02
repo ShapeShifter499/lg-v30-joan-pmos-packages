@@ -2,181 +2,110 @@
 maintainer="Lance <Gero3977@gmail.com>"
 pkgname=firmware-lge-joan
 pkgver=1.0
-pkgrel=6
+pkgrel=7
 pkgdesc="Firmware for the LG V30 (joan)"
-url="https://github.com/ShapeShifter499/lg-v30-joan-pmos-packages"
+url="https://github.com/ShapeShifter499/firmware-lge-joan-blobs"
 arch="aarch64"
 license="custom"
 subpackages="
-	$pkgname-adreno-h930:adreno_h930
-	$pkgname-adreno-h932:adreno_h932
-	$pkgname-bluetooth:bluetooth
-	$pkgname-modem:modem
-	$pkgname-adsp:adsp
-	$pkgname-ipa:ipa
-	$pkgname-wifi:wifi
+	$pkgname-h930:h930
+	$pkgname-h932:h932
 	$pkgname-initramfs:firmware_initramfs:noarch
 	"
 options="!check !strip !archcheck !spdx !tracedeps pmb:cross-native"
 
-# GPU, zap-shader and Bluetooth firmware is redistributable and comes from
-# commit-pinned TheMuppets vendor trees.
-_joan_commit="2489e95801110695e991394245b6d7ae66670c4e"
-_common_commit="274a1e49a783b971eb967f6afd303b3ec38c9a1b"
-_joan_url="https://raw.githubusercontent.com/TheMuppets/proprietary_vendor_lge_joan/$_joan_commit/proprietary/vendor/firmware"
-_common_url="https://raw.githubusercontent.com/TheMuppets/proprietary_vendor_lge_joan-common/$_common_commit/proprietary/vendor/firmware"
-
-# The modem, ADSP, IPA and WLAN images live in the device's modem and dsp
-# partitions rather than the vendor partition TheMuppets dumps, so there is
-# nothing upstream to fetch: they are hosted separately and pinned by commit.
-_blobs_commit="6723629581f8e29303a70870f96c2a6d03230c18"
-_blobs_url="https://github.com/ShapeShifter499/firmware-lge-joan-blobs"
-_blobs="$srcdir/firmware-lge-joan-blobs-$_blobs_commit"
+# Everything is mirrored into one repository and pinned by commit, so a build
+# depends on no third party staying up.  The redistributable GPU and Bluetooth
+# files originate from commit-pinned TheMuppets vendor trees; the modem, ADSP,
+# IPA, WLAN and zap payloads come off retail devices.
+_commit="f79f6166ff0377f432437c294f3d37b7b97162f3"
+_blobs="$srcdir/firmware-lge-joan-blobs-$_commit"
 _fwdir="/usr/lib/firmware"
 
 source="
-	a540_gpmu.fw2::$_common_url/a540_gpmu.fw2
-	crbtfw21.tlv::$_common_url/crbtfw21.tlv
-	crnv21.bin::$_common_url/crnv21.bin
-	H930-a540_zap.mdt::$_joan_url/H930/a540_zap.mdt
-	H930-a540_zap.b00::$_joan_url/H930/a540_zap.b00
-	H930-a540_zap.b01::$_joan_url/H930/a540_zap.b01
-	H930-a540_zap.b02::$_joan_url/H930/a540_zap.b02
-	H932-a540_zap.mdt::$_joan_url/H932/a540_zap.mdt
-	H932-a540_zap.b00::$_joan_url/H932/a540_zap.b00
-	H932-a540_zap.b01::$_joan_url/H932/a540_zap.b01
-	H932-a540_zap.b02::$_joan_url/H932/a540_zap.b02
-	firmware-lge-joan-blobs-$_blobs_commit.tar.gz::$_blobs_url/archive/$_blobs_commit.tar.gz
+	firmware-lge-joan-blobs-$_commit.tar.gz::$url/archive/$_commit.tar.gz
 	joan-firmware-variant
 	30-lge-joan-gpu.files
-	NOTICE.txt
-	LICENSE.qcom
 	"
 
-prepare() {
-	default_prepare
+# Copy one tree from the mirror, verifying every file against the manifest as
+# it goes.  The archive sum covers the download; this covers the contents and
+# survives the archive being regenerated.
+_install_tree() {
+	local _tree="$1" _dest="$2"
+	local _t _path _size _sha _actual _seen=0 _bad=0 _missing=0
 
-	# The archive sum covers the download; this covers the contents, and
-	# survives the archive being regenerated.
-	msg "Verifying hosted firmware against MANIFEST.tsv"
-	local _src _dst _size _sha _actual _missing=0 _bad=0 _seen=0
-	while IFS="$(printf '\t')" read -r _src _dst _size _sha || [ -n "$_src" ]; do
-		case "$_src" in \#*|"") continue ;; esac
-		if ! [ -f "$_blobs/$_dst" ]; then
-			error "missing: $_dst"
+	while IFS="$(printf '\t')" read -r _t _path _size _sha || [ -n "$_t" ]; do
+		case "$_t" in \#*|"") continue ;; esac
+		[ "$_t" = "$_tree" ] || continue
+
+		if ! [ -f "$_blobs/$_tree/$_path" ]; then
+			error "missing from $_tree: $_path"
 			_missing=$((_missing + 1))
 			continue
 		fi
-		_seen=$((_seen + 1))
-		_actual=$(sha256sum "$_blobs/$_dst" | cut -d' ' -f1)
+		_actual=$(sha256sum "$_blobs/$_tree/$_path" | cut -d' ' -f1)
 		if [ "$_actual" != "$_sha" ]; then
-			error "sha256 mismatch: $_dst"
+			error "sha256 mismatch in $_tree: $_path"
 			_bad=$((_bad + 1))
+			continue
 		fi
+		install -Dm644 "$_blobs/$_tree/$_path" "$_dest/$_path"
+		_seen=$((_seen + 1))
 	done < "$_blobs/MANIFEST.tsv"
 
 	if [ "$_missing" -ne 0 ] || [ "$_bad" -ne 0 ] || [ "$_seen" -eq 0 ]; then
-		error "hosted firmware failed verification: $_seen verified, $_missing missing, $_bad mismatched"
+		error "$_tree failed verification: $_seen ok, $_missing missing, $_bad mismatched"
 		return 1
 	fi
-	msg "verified $_seen hosted firmware files"
+	msg "$_tree: verified and installed $_seen files"
 }
 
 package() {
-	# The parent carries only the licence and the diagnostic, as
-	# firmware-qcom-adreno does; the firmware itself is in the subpackages.
-	install -Dm644 "$srcdir/LICENSE.qcom" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-	install -Dm644 "$srcdir/NOTICE.txt" "$pkgdir/usr/share/licenses/$pkgname/NOTICE"
+	# Firmware every joan shares, plus the licence and the diagnostic.
+	_install_tree common "$pkgdir$_fwdir"
+
+	install -Dm644 "$_blobs/LICENSE.qcom" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+	install -Dm644 "$_blobs/NOTICE.txt" "$pkgdir/usr/share/licenses/$pkgname/NOTICE"
 	install -Dm755 "$srcdir/joan-firmware-variant" "$pkgdir/usr/bin/joan-firmware-variant"
 }
 
-# The A540 zap shader is the only firmware that differs between Joan models,
-# and only .mdt and .b01 differ at that -- .b00 and .b02 are byte-identical.
-# What varies is the signature, not the shader.  An exact LG-H932 needs the
-# H932 set; every other variant, LG-H932PR included, needs the H930 one.  Each
-# package carries a complete set, so there is no way to end up half-installed.
-_adreno() {
-	local _part _variant="$1"
-	depends="firmware-qcom-adreno-a530"
-	provides="$pkgname-adreno=$pkgver-r$pkgrel"
+# The H932 is the T-Mobile model and is signed with different keys.  Against
+# stock firmware of the same Android release and the same Qualcomm build, 38 of
+# 47 files differ.  Exactly one of these may be installed; there is no default,
+# because guessing wrong means handing a device firmware signed for another
+# model.  LineageOS makes the same distinction by detecting an H932 at flash
+# time.
+h930() {
+	pkgdesc="LG V30 firmware (H930, US998, H932PR and every other joan)"
+	depends="firmware-qcom-adreno-a530 linux-firmware-ath10k !$pkgname-h932"
+	provides="$pkgname-variant=$pkgver-r$pkgrel"
 	install="$subpkgname.post-install"
 
-	install -Dm644 "$srcdir/a540_gpmu.fw2" "$subpkgdir$_fwdir/qcom/a540_gpmu.fw2"
-	for _part in mdt b00 b01 b02; do
-		install -Dm644 "$srcdir/$_variant-a540_zap.$_part" \
-			"$subpkgdir$_fwdir/qcom/a540_zap.$_part"
-	done
+	_install_tree h930 "$subpkgdir$_fwdir"
+	ln -s qcom/msm8998/joan/wlanmdsp.mbn "$subpkgdir$_fwdir/wlanmdsp.mbn"
 }
 
-adreno_h930() {
-	pkgdesc="LG V30 Adreno 540 firmware (H930, US998, H932PR, non-H932)"
-	depends="!$pkgname-adreno-h932"
-	_adreno H930
-}
+h932() {
+	pkgdesc="LG V30 firmware (exact LG-H932 only, differently signed)"
+	depends="firmware-qcom-adreno-a530 linux-firmware-ath10k !$pkgname-h930"
+	provides="$pkgname-variant=$pkgver-r$pkgrel"
+	install="$subpkgname.post-install"
 
-adreno_h932() {
-	pkgdesc="LG V30 Adreno 540 firmware (LG-H932 only, differently signed)"
-	depends="!$pkgname-adreno-h930"
-	_adreno H932
-}
-
-bluetooth() {
-	pkgdesc="LG V30 Bluetooth firmware"
-	install -Dm644 "$srcdir/crbtfw21.tlv" "$subpkgdir$_fwdir/qca/crbtfw21.tlv"
-	install -Dm644 "$srcdir/crnv21.bin" "$subpkgdir$_fwdir/qca/crnv21.bin"
-}
-
-modem() {
-	pkgdesc="LG V30 modem firmware"
-	install -Dm644 "$_blobs"/qcom/msm8998/joan/modem.* \
-		"$_blobs"/qcom/msm8998/joan/mba.mbn \
-		-t "$subpkgdir$_fwdir/qcom/msm8998/joan/"
-}
-
-adsp() {
-	pkgdesc="LG V30 ADSP firmware"
-	install -Dm644 "$_blobs"/qcom/msm8998/joan/adsp.* \
-		-t "$subpkgdir$_fwdir/qcom/msm8998/joan/"
-}
-
-ipa() {
-	pkgdesc="LG V30 IPA firmware"
-	install -Dm644 "$_blobs"/ipa_fws.* -t "$subpkgdir$_fwdir/"
-}
-
-wifi() {
-	pkgdesc="LG V30 WLAN firmware"
-	depends="linux-firmware-ath10k"
-	install -Dm644 "$_blobs"/qcom/msm8998/joan/wlanmdsp.mbn \
-		-t "$subpkgdir$_fwdir/qcom/msm8998/joan/"
-	install -Dm644 "$_blobs"/ath10k/WCN3990/hw1.0/board.bin \
-		-t "$subpkgdir$_fwdir/ath10k/WCN3990/hw1.0/"
-	# ath10k looks for this at the top of the firmware tree.
+	_install_tree h932 "$subpkgdir$_fwdir"
 	ln -s qcom/msm8998/joan/wlanmdsp.mbn "$subpkgdir$_fwdir/wlanmdsp.mbn"
 }
 
 firmware_initramfs() {
 	pkgdesc="Early GPU and Bluetooth firmware list for the LG V30 initramfs"
-	depends="$pkgname-adreno $pkgname-bluetooth"
+	depends="$pkgname=$pkgver-r$pkgrel $pkgname-variant"
 
 	install -Dm644 "$srcdir/30-lge-joan-gpu.files" \
 		"$subpkgdir/usr/share/mkinitfs/files/30-lge-joan-gpu.files"
 }
+
 sha512sums="
-8ee54e1515e02b825d0d172da5760d8f0b895396b8992cc0fe8d00f64074eadf4a02646f6700b52f2fe8a5a55216cc3222872c0a2da8fc5da50c39a1023d2e06  a540_gpmu.fw2
-44b860ed2a32063cecd90c841dad936825a0a55ab222de58a982c5efb5f6dd25d89cdefe4ce5187454aaee6e938b76012aa04335b56d807f39c69597d2149c88  crbtfw21.tlv
-0ded50b80a03b6e599c0f9dbbd12c680994d39761281d329986b16c4303275faef005bcb001c4143538518b14d071283f25f2be8da4cbd4a2656e9e371ff0ddf  crnv21.bin
-efb3096b7500f6ca5fb7daea497f13777bc7500c0aad3f3eacc096aaea2d51ccd284eea51df153bfccf05c18240d12e907b3ac0244bacd86fe452bccb5b04485  H930-a540_zap.mdt
-9d231b62edf2d44cfd0830736b92049c9bc9400e2506383b240d6374aa78cc0fa2db86363f4a9cd3d44d613baf0a152132be858b5d8853af957c5a20c81a4e07  H930-a540_zap.b00
-ba5496d9b3696b1f4b0e2973ea015e25bb01a8b5d5fb97ed85709d3cfa1fbc9bc27495ec62f4450ebafcbec0063efb694104386487f3df699b5be4fccd34fe13  H930-a540_zap.b01
-49280211147ba839b535ddb855022f7bd2b8d787e61083235390e539ce57320c7c7277f70d8c660859845bef88982707bd558f05f5b8e6bbf3dd451ba1035951  H930-a540_zap.b02
-dc7093c67eff724d85e312b2f1944e9b027a31b0d1086aba21eb5ca3dfa2ef8719fa5fb85ae565128b4bb65b9df08855ceed45942682ea712680ab82cbc87685  H932-a540_zap.mdt
-9d231b62edf2d44cfd0830736b92049c9bc9400e2506383b240d6374aa78cc0fa2db86363f4a9cd3d44d613baf0a152132be858b5d8853af957c5a20c81a4e07  H932-a540_zap.b00
-a7ff158077dc9cec576546d1cf6d1805bb150dd122bea1dfe6752101df90c10d3c0b15a2c9a41681ab1bcd5ce7e06d870339ee8da0f83523078497c58f58e205  H932-a540_zap.b01
-49280211147ba839b535ddb855022f7bd2b8d787e61083235390e539ce57320c7c7277f70d8c660859845bef88982707bd558f05f5b8e6bbf3dd451ba1035951  H932-a540_zap.b02
-03d737ff5e495dd05986520f9ef6261f386f8cb8edddb70a78f176d5143a22a4d0c9ddfa0155aa3f18b17f885e6a214367e4aa99faa15008c0fe12d9c29e9863  firmware-lge-joan-blobs-6723629581f8e29303a70870f96c2a6d03230c18.tar.gz
+ab50defb933f84170b9d8551e4fc1221c9424cf53a43b43e35b7db3051fa26cb77ad02946a0268adbbecdfd287b6c86babb065c86a9f340fb2a3e020a0c0bc85  firmware-lge-joan-blobs-f79f6166ff0377f432437c294f3d37b7b97162f3.tar.gz
 575d5d43eed3ad5dec3a43ea3ce4745e21a6d431770bacb4d11f2644d22be59e780c7b8ce4aaa6132c3252504cdf7c12d3dc68cdf7fb0744ed4defed247eea09  joan-firmware-variant
 c8dde5e93fc60756802de5ba1eaa6f8c8edc5629b271bae54d6cb84fc27a6938fdb2cc8dcd3135140fe8f5efad844e8071234de7a4d170e1b641de1efe3febf9  30-lge-joan-gpu.files
-9c6644633bcb061e2a134d2076be4bf24d6097aace62366d94daa97e15433e38cf2a965f7a986e133de036d88dbac81fe3e03c34e41c53755904ea2e5326c7a9  NOTICE.txt
-4d5321baa343d04309c47bcb3ea8f630f3e2d7142225539f5c27afb3bd6b94c3c082814ad299016c945818bcb9ca3a0b7d2c30aec52d0448694dc44f0dda32f5  LICENSE.qcom
 "
