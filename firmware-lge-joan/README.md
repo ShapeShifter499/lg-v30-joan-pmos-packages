@@ -21,6 +21,10 @@ They conflict, and there is deliberately no default. Both warn on install and
 read the bootloader model from `/proc/cmdline` to tell you if you picked wrong.
 `LG-H932PR` is **not** an H932 and takes h930.
 
+The device packages in
+[`pmaports-lge-joan`](https://github.com/ShapeShifter499/pmaports-lge-joan)
+already pull the right pair: pick `joan` or `joan-h932` at `pmbootstrap init`.
+
 ## Why the split
 
 The H932 is the T-Mobile model, signed with different keys. Measured against
@@ -42,15 +46,36 @@ US998 and inferred for H930 and H932PR.
 
 All of it is mirrored into
 [`firmware-lge-joan-blobs`](https://github.com/ShapeShifter499/firmware-lge-joan-blobs)
-and pinned by commit, so a build depends on no third party staying reachable.
-The GPU and Bluetooth files originate from commit-pinned TheMuppets vendor
-trees; the rest comes off retail devices.
+and pinned by commit, so a build depends on no third party staying reachable
+and **does not need an owner-extracted tarball**. The GPU and Bluetooth files
+originate from commit-pinned TheMuppets vendor trees; the rest comes off retail
+devices.
 
 Integrity is checked twice: the archive by `sha512`, then every file against
 `MANIFEST.tsv` by `sha256` before it is installed.
 
 WLAN `board.bin` is the stock generic board data from each variant's system
 image, not per-unit factory calibration from any particular handset.
+
+There is no `owner-firmware-lge-joan.tar`. If a build asks for that file, the
+recipe is stale — use this package (pkgrel 8+), not
+`ShapeShifter499/firmware-lge-joan`.
+
+## Building
+
+This directory is a standard Alpine `APKBUILD`. From a pmaports checkout:
+
+```sh
+git clone https://github.com/ShapeShifter499/lg-v30-joan-pmos-packages
+cp -r lg-v30-joan-pmos-packages/firmware-lge-joan \
+      pmaports-lge-joan/device/testing/
+pmbootstrap checksum firmware-lge-joan   # only if you edited the recipe
+pmbootstrap build firmware-lge-joan
+```
+
+`pmbootstrap build` fetches
+`firmware-lge-joan-blobs` at the commit pinned in `APKBUILD`. A missing
+`owner-firmware-lge-joan.tar` means you copied an old recipe.
 
 ## Licence
 

@@ -1,3 +1,7 @@
+# Historical TheMuppets pins for the GPU/BT files that now live in
+# firmware-lge-joan-blobs (common/ + zap inside h930/ and h932/).
+# The APKBUILD no longer fetches these URLs; it installs from the blobs
+# archive. Kept so the original provenance is still readable.
 # filename	variant	size	sha256	url
 common-a540_gpmu.fw2	common	11736	57d7653c4dcc1130ac2c31512ec7fbb6348613d4bcd99b9b6221e3f9ee52f535	https://raw.githubusercontent.com/TheMuppets/proprietary_vendor_lge_joan-common/274a1e49a783b971eb967f6afd303b3ec38c9a1b/proprietary/vendor/firmware/a540_gpmu.fw2
 crbtfw21.tlv	common	149428	8d587968cd90fb2c4bf94cd06921e9979015172b49ac3a8741947dd37675f2c5	https://raw.githubusercontent.com/TheMuppets/proprietary_vendor_lge_joan-common/274a1e49a783b971eb967f6afd303b3ec38c9a1b/proprietary/vendor/firmware/crbtfw21.tlv

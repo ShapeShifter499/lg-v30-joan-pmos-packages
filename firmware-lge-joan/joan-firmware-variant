@@ -9,6 +9,11 @@ dt_glob='/proc/device-tree/soc*/gpu*/zap-shader/firmware-name'
 fw_name=
 explain=false
 
+# Hashes of qcom/a540_zap.mdt as shipped by firmware-lge-joan-h930 / -h932
+# from firmware-lge-joan-blobs f79f6166 (Pie US99830b / H93230d).
+_h930_zap_mdt=cc51c6cec73c932c99ec82327c14f2eaa0308ced70e1e65573e0494b9ecc89bb
+_h932_zap_mdt=d33e37f06d6123d57841cb00df78a840fb09ad32fb529e8567a4e353e7894427
+
 usage() {
 	cat <<'USAGE'
 Usage: joan-firmware-variant [--fw-name TEXT] [--fwdir DIR] [--dt-file PATH]
@@ -16,15 +21,13 @@ Usage: joan-firmware-variant [--fw-name TEXT] [--fwdir DIR] [--dt-file PATH]
 
 Prints "h930" or "h932": which A540 zap payload this system loads.
 
-Two mechanisms are supported, because the two products select differently.
-The device tree names the payload directly when the boot image was built with
-a per-variant DTB (the pre-alpha images do this).  Otherwise the kernel asks
-for the generic qcom/a540_zap.mdt and the choice was made by installing either
-firmware-lge-joan-zap-h930 or -zap-h932; in that case the installed file is
-compared against the per-model copies to see which one it is.
+The kernel DT asks for the generic qcom/a540_zap.mdt. Which signing family
+that file is comes from the installed package:
 
-An exact LG-H932 needs h932.  Every other Joan variant, H932PR included, uses
-h930.  There is deliberately no fallback: a wrong answer here means a payload
+  firmware-lge-joan-h930   H930, US998, H932PR, every other joan
+  firmware-lge-joan-h932   an exact LG-H932 only
+
+There is deliberately no fallback: a wrong answer here means a payload
 signed for another model.
 USAGE
 }
@@ -45,7 +48,9 @@ if [ -z "$fw_name" ]; then
 	# shellcheck disable=SC2086
 	set -- $dt_glob
 	set +f
-	[ -r "$1" ] && fw_name=$(tr -d '\0' < "$1")
+	if [ -n "${1:-}" ] && [ -r "$1" ]; then
+		fw_name=$(tr -d '\0' < "$1")
+	fi
 fi
 
 variant=
@@ -57,31 +62,44 @@ case "$fw_name" in
 esac
 
 if [ -z "$variant" ]; then
-	# Generic path: identify the installed payload by content.
 	generic=$fwdir/qcom/a540_zap.mdt
 	if [ ! -r "$generic" ]; then
 		echo "no zap payload at $generic and no per-variant device tree entry" >&2
-		echo "install firmware-lge-joan-zap-h930 or firmware-lge-joan-zap-h932" >&2
+		echo "install firmware-lge-joan-h930 or firmware-lge-joan-h932" >&2
 		exit 1
 	fi
 	sum=$(sha256sum "$generic" | cut -d' ' -f1)
-	for _v in H930 H932; do
-		model=$fwdir/qcom/lge/joan/$_v/a540_zap.mdt
-		[ -r "$model" ] || continue
-		if [ "$sum" = "$(sha256sum "$model" | cut -d' ' -f1)" ]; then
-			variant=$(echo "$_v" | tr '[:upper:]' '[:lower:]')
-			reason="installed payload matches the $_v copy"
-			break
-		fi
-	done
-fi
-
-if [ -z "$variant" ]; then
-	echo "installed zap payload matches neither the H930 nor the H932 copy" >&2
-	exit 1
+	case "$sum" in
+		"$_h930_zap_mdt")
+			variant=h930
+			reason="installed qcom/a540_zap.mdt matches the h930 package"
+			;;
+		"$_h932_zap_mdt")
+			variant=h932
+			reason="installed qcom/a540_zap.mdt matches the h932 package"
+			;;
+		*)
+			echo "installed zap payload matches neither firmware-lge-joan-h930 nor -h932" >&2
+			exit 1
+			;;
+	esac
 fi
 
 printf '%s\n' "$variant"
 if [ "$explain" = true ]; then
 	printf 'joan zap payload: %s (%s)\n' "$variant" "$reason" >&2
+	if [ -r /proc/cmdline ]; then
+		model=$(tr ' ' '\n' < /proc/cmdline \
+			| sed -n 's/^androidboot\.vendor\.lge\.model\.name=//p' | head -1)
+		if [ -n "$model" ]; then
+			case "$model" in
+				LG-H932) want=h932 ;;
+				*) want=h930 ;;
+			esac
+			if [ "$want" != "$variant" ]; then
+				printf 'WARNING: bootloader reports %s, which needs %s, not %s\n' \
+					"$model" "$want" "$variant" >&2
+			fi
+		fi
+	fi
 fi
