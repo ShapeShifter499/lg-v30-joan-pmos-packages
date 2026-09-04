@@ -24,6 +24,8 @@ read the bootloader model from `/proc/cmdline` to tell you if you picked wrong.
 The device packages in
 [`pmaports-lge-joan`](https://github.com/ShapeShifter499/pmaports-lge-joan)
 already pull the right pair: pick `joan` or `joan-h932` at `pmbootstrap init`.
+That fork vendors this recipe under `device/testing/firmware-lge-joan`, so a
+clone of pmaports does not need a copy-in.
 
 ## Why the split
 
@@ -63,12 +65,11 @@ recipe is stale — use this package (pkgrel 8+), not
 
 ## Building
 
-This directory is a standard Alpine `APKBUILD`. From a pmaports checkout:
+This directory is a standard Alpine `APKBUILD`. It is already in
+`pmaports-lge-joan/device/testing/firmware-lge-joan`. Edit it there, or copy
+this working copy over that path, then:
 
 ```sh
-git clone https://github.com/ShapeShifter499/lg-v30-joan-pmos-packages
-cp -r lg-v30-joan-pmos-packages/firmware-lge-joan \
-      pmaports-lge-joan/device/testing/
 pmbootstrap checksum firmware-lge-joan   # only if you edited the recipe
 pmbootstrap build firmware-lge-joan
 ```

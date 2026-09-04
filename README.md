@@ -46,31 +46,37 @@ Note that UCM matches on the card's **long name** (`LG-V30`), not its id
 
 ## Building
 
-Each directory is a standard Alpine `APKBUILD`. Copy the package you need
-into a [`pmaports-lge-joan`](https://github.com/ShapeShifter499/pmaports-lge-joan)
-checkout and build it by name:
+`firmware-lge-joan` is already in
+[`pmaports-lge-joan`](https://github.com/ShapeShifter499/pmaports-lge-joan)
+(`device/testing/firmware-lge-joan`). A clone of that fork plus
+`pmbootstrap init` / `install` fetches
+[`firmware-lge-joan-blobs`](https://github.com/ShapeShifter499/firmware-lge-joan-blobs)
+at the commit pin. There is no copy-in and no `owner-firmware-lge-joan.tar`.
+
+This repo is the extra-packages tree (audio, VoLTE) and a working copy of
+the firmware recipe. To rebuild firmware by name from here:
 
 ```sh
-git clone https://github.com/ShapeShifter499/lg-v30-joan-pmos-packages
-cp -r lg-v30-joan-pmos-packages/firmware-lge-joan \
-      lg-v30-joan-pmos-packages/alsa-ucm-conf-lge-joan \
-      pmaports-lge-joan/device/testing/
-pmbootstrap build firmware-lge-joan alsa-ucm-conf-lge-joan
+cp -r firmware-lge-joan pmaports-lge-joan/device/testing/   # only if you edited it
+pmbootstrap build firmware-lge-joan
 ```
-
-`firmware-lge-joan` fetches
-[`firmware-lge-joan-blobs`](https://github.com/ShapeShifter499/firmware-lge-joan-blobs)
-at the commit pinned in its APKBUILD. There is no `owner-firmware-lge-joan.tar`.
-If a build asks for that file, the recipe is stale.
 
 Pick the device at `pmbootstrap init`: `joan` pulls `-h930`, `joan-h932` pulls
 `-h932`. Do not install both family packages.
 
+Audio / VoLTE are still copy-in:
+
+```sh
+cp -r alsa-ucm-conf-lge-joan joan-imsd lge-joan-volte \
+      pmaports-lge-joan/device/testing/
+pmbootstrap build alsa-ucm-conf-lge-joan
+```
+
 ## Status
 
-- `firmware-lge-joan` — split by signing family (pkgrel 8). Canonical recipe
-  lives **here**. `ShapeShifter499/firmware-lge-joan` is the retired
-  owner-tarball recipe; do not copy it into pmaports.
+- `firmware-lge-joan` — split by signing family (pkgrel 8). In-tree on
+  `pmaports-lge-joan`. This directory is the working copy. Do **not** copy
+  `ShapeShifter499/firmware-lge-joan` (retired owner-tarball recipe).
 - `alsa-ucm-conf-lge-joan` — profile validated with `alsaucm`; not yet
   confirmed end to end through PipeWire, because the running pmOS image is an
   Alpine/OpenRC rootfs with no `systemctl`, so the sound server was never
