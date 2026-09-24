@@ -4,11 +4,11 @@ You flashed pmOS onto a V30. This is the user-facing path — not a lab script.
 
 ## 1. Install the device stack
 
-On a finished image these should already be pulled in by `lge-joan-volte`.
+On a finished image these should already be pulled in by `lg-joan-volte`.
 If you built a minimal rootfs:
 
 ```sh
-sudo apk add lge-joan-volte
+sudo apk add lg-joan-volte
 # pulls: firmware (separate), modemmanager, rmtfs, 81voltd, calls, joan-imsd
 ```
 

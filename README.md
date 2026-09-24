@@ -14,10 +14,10 @@ image, and board-specific audio configuration.
 
 | directory | package | what it is |
 |---|---|---|
-| `firmware-lge-joan/` | `firmware-lge-joan` (+ `-h930` / `-h932`) | Shared GPU/BT plus one signing-family package. Fetched from commit-pinned `firmware-lge-joan-blobs`. **No owner tarball.** |
-| `alsa-ucm-conf-lge-joan/` | `alsa-ucm-conf-lge-joan` | ALSA UCM profile so PipeWire exposes the sound card instead of a dummy output |
+| `firmware-lg-joan/` | `firmware-lg-joan` (+ `-h930` / `-h932`) | Shared GPU/BT plus one signing-family package. Fetched from commit-pinned `firmware-lg-joan-blobs`. **No owner tarball.** |
+| `alsa-ucm-conf-lg-joan/` | `alsa-ucm-conf-lg-joan` | ALSA UCM profile so PipeWire exposes the sound card instead of a dummy output |
 | `joan-imsd/` | `joan-imsd` | 3GPP IMS SIP UA (VoLTE). OpenRC `joan-imsd`, CLI `joan-ims dial` |
-| `lge-joan-volte/` | `lge-joan-volte` | First-boot metapackage: MM + 81voltd + rmtfs + calls + joan-imsd |
+| `lg-joan-volte/` | `lg-joan-volte` | First-boot metapackage: MM + 81voltd + rmtfs + calls + joan-imsd |
 
 A new pmOS user follows `FIRST-INSTALL-VOLTE.md`.
 
@@ -50,14 +50,14 @@ All of these recipes are already in
 [`pmaports-lge-joan`](https://github.com/ShapeShifter499/pmaports-lge-joan)
 under `device/testing/`. A clone of that fork plus `pmbootstrap init` /
 `install` fetches firmware blobs and builds firmware, UCM, and VoLTE.
-There is no copy-in and no `owner-firmware-lge-joan.tar`.
+There is no copy-in and no `owner-firmware-lg-joan.tar`.
 
 This repo is the working copy. To rebuild one package after editing it here:
 
 ```sh
-cp -r firmware-lge-joan alsa-ucm-conf-lge-joan joan-imsd lge-joan-volte \
+cp -r firmware-lg-joan alsa-ucm-conf-lg-joan joan-imsd lg-joan-volte \
       pmaports-lge-joan/device/testing/   # only if you edited it
-pmbootstrap build firmware-lge-joan alsa-ucm-conf-lge-joan joan-imsd
+pmbootstrap build firmware-lg-joan alsa-ucm-conf-lg-joan joan-imsd
 ```
 
 Pick the device at `pmbootstrap init`: `joan` pulls `-h930`, `joan-h932` pulls
@@ -65,13 +65,13 @@ Pick the device at `pmbootstrap init`: `joan` pulls `-h930`, `joan-h932` pulls
 
 ## Status
 
-- `firmware-lge-joan` — split by signing family (pkgrel 8). In-tree on
+- `firmware-lg-joan` — split by signing family (pkgrel 8). In-tree on
   `pmaports-lge-joan`. This directory is the working copy. Do **not** copy
-  `ShapeShifter499/firmware-lge-joan` (retired owner-tarball recipe).
-- `alsa-ucm-conf-lge-joan` — in-tree on `pmaports-lge-joan`; device packages
+  `ShapeShifter499/firmware-lg-joan` (retired owner-tarball recipe).
+- `alsa-ucm-conf-lg-joan` — in-tree on `pmaports-lge-joan`; device packages
   depend on it. Profile validated with `alsaucm`; PipeWire still needs one
   boot with the package installed.
-- `joan-imsd` / `lge-joan-volte` — in-tree; pulled by both device packages.
+- `joan-imsd` / `lg-joan-volte` — in-tree; pulled by both device packages.
   See `FIRST-INSTALL-VOLTE.md`.
 
 ## Related
@@ -83,7 +83,7 @@ Pick the device at `pmbootstrap init`: `joan` pulls `-h930`, `joan-h932` pulls
 
 This repository is text-only. The proprietary modem, ADSP, IPA and WLAN
 firmware is hosted separately in
-[`ShapeShifter499/firmware-lge-joan-blobs`](https://github.com/ShapeShifter499/firmware-lge-joan-blobs)
+[`ShapeShifter499/firmware-lg-joan-blobs`](https://github.com/ShapeShifter499/firmware-lg-joan-blobs)
 and fetched by commit-pinned URL, the way TheMuppets, FairBlobs and
 sdm845-mainline host blobs for other postmarketOS devices.
 
