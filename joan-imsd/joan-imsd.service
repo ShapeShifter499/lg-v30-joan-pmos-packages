@@ -1,0 +1,22 @@
+[Unit]
+Description=LG V30 IMS registration (VoLTE SIP UA)
+Wants=ModemManager.service 81voltd.service
+After=ModemManager.service 81voltd.service
+ConditionPathExists=/usr/bin/joan-ims
+# Stay inert until an operator identity exists: the live flow exits with
+# code 2/3 without one, and retrying is just churn on alpha images.
+ConditionPathExists=/etc/joan-imsd/isim.env
+# Bound the retry storm when the modem is down but identity exists.
+StartLimitIntervalSec=600
+StartLimitBurst=3
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/joan-ims register
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=/usr/lib/joan-imsd
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -10,14 +10,20 @@ These are the bits joan needs that do not belong in the kernel tree and are not
 carried by upstream pmaports: proprietary firmware pulled from the vendor
 image, and board-specific audio configuration.
 
+**2026-10-03:** packages renamed `lge-joan` -> `lg-joan` to match postmarketOS's
+`lg-<codename>` convention; each carries `provides`/`replaces` for its old name, so
+`apk upgrade` migrates an installed system. The recipes here are synced from
+`device/testing/` of the pmaports fork (branch `joan/readme-build-guide`), which is
+where they are built from; edit them there first.
+
 ## Packages
 
 | directory | package | what it is |
 |---|---|---|
-| `firmware-lge-joan/` | `firmware-lge-joan` (+ `-h930` / `-h932`) | Shared GPU/BT plus one signing-family package. Fetched from commit-pinned `firmware-lge-joan-blobs`. **No owner tarball.** |
-| `alsa-ucm-conf-lge-joan/` | `alsa-ucm-conf-lge-joan` | ALSA UCM profile so PipeWire exposes the sound card instead of a dummy output |
+| `firmware-lg-joan/` | `firmware-lg-joan` (+ `-h930` / `-h932`) | Shared GPU/BT plus one signing-family package. Fetched from commit-pinned `firmware-lge-joan-blobs`. **No owner tarball.** |
+| `alsa-ucm-conf-lg-joan/` | `alsa-ucm-conf-lg-joan` | ALSA UCM profile so PipeWire exposes the sound card instead of a dummy output |
 | `joan-imsd/` | `joan-imsd` | 3GPP IMS SIP UA (VoLTE). OpenRC `joan-imsd`, CLI `joan-ims dial` |
-| `lge-joan-volte/` | `lge-joan-volte` | First-boot metapackage: MM + 81voltd + rmtfs + calls + joan-imsd |
+| `lg-joan-volte/` | `lg-joan-volte` | First-boot metapackage: MM + 81voltd + rmtfs + calls + joan-imsd |
 | `lg-joan-cellular-data/` | `lg-joan-cellular-data` | Cellular-data defaults: rmnet DAD-off udev rule + carrier-agnostic NetworkManager profile |
 
 A new pmOS user follows `FIRST-INSTALL-VOLTE.md`.
@@ -72,9 +78,9 @@ There is no copy-in and no `owner-firmware-lge-joan.tar`.
 This repo is the working copy. To rebuild one package after editing it here:
 
 ```sh
-cp -r firmware-lge-joan alsa-ucm-conf-lge-joan joan-imsd lge-joan-volte \
+cp -r firmware-lg-joan alsa-ucm-conf-lg-joan joan-imsd lg-joan-volte \
       pmaports-lge-joan/device/testing/   # only if you edited it
-pmbootstrap build firmware-lge-joan alsa-ucm-conf-lge-joan joan-imsd
+pmbootstrap build firmware-lg-joan alsa-ucm-conf-lg-joan joan-imsd
 ```
 
 Pick the device at `pmbootstrap init`: `joan` pulls `-h930`, `joan-h932` pulls
@@ -82,13 +88,13 @@ Pick the device at `pmbootstrap init`: `joan` pulls `-h930`, `joan-h932` pulls
 
 ## Status
 
-- `firmware-lge-joan` — split by signing family (pkgrel 8). In-tree on
+- `firmware-lg-joan` — split by signing family (pkgrel 8). In-tree on
   `pmaports-lge-joan`. This directory is the working copy. Do **not** copy
   `ShapeShifter499/firmware-lge-joan` (retired owner-tarball recipe).
-- `alsa-ucm-conf-lge-joan` — in-tree on `pmaports-lge-joan`; device packages
+- `alsa-ucm-conf-lg-joan` — in-tree on `pmaports-lge-joan`; device packages
   depend on it. Profile validated with `alsaucm`; PipeWire still needs one
   boot with the package installed.
-- `joan-imsd` / `lge-joan-volte` — in-tree; pulled by both device packages.
+- `joan-imsd` / `lg-joan-volte` — in-tree; pulled by both device packages.
   See `FIRST-INSTALL-VOLTE.md`.
 
 ## Related
