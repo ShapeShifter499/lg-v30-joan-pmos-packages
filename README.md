@@ -18,6 +18,7 @@ image, and board-specific audio configuration.
 | `alsa-ucm-conf-lge-joan/` | `alsa-ucm-conf-lge-joan` | ALSA UCM profile so PipeWire exposes the sound card instead of a dummy output |
 | `joan-imsd/` | `joan-imsd` | 3GPP IMS SIP UA (VoLTE). OpenRC `joan-imsd`, CLI `joan-ims dial` |
 | `lge-joan-volte/` | `lge-joan-volte` | First-boot metapackage: MM + 81voltd + rmtfs + calls + joan-imsd |
+| `lg-joan-cellular-data/` | `lg-joan-cellular-data` | Cellular-data defaults: rmnet DAD-off udev rule + carrier-agnostic NetworkManager profile |
 
 A new pmOS user follows `FIRST-INSTALL-VOLTE.md`.
 
@@ -43,6 +44,22 @@ $ alsaucm -c 0 set _verb HiFi list _devices
 
 Note that UCM matches on the card's **long name** (`LG-V30`), not its id
 (`LGV30`) — `alsaucm -c LGV30` will fail while `-c 0` and `-c LG-V30` work.
+
+## Why the cellular-data package exists
+
+The modem and ModemManager bring the T-Mobile (or any carrier) LTE bearer up
+fine, but the IPA data netdev (`qmapmux0.0` on `rmnet_ipa0`) never answers
+IPv6 neighbor solicitation, so kernel DAD fails, the carrier address stays
+`tentative`, and every route stays dead — the desktop shows the
+no-connection triangle while `mmcli` reports a connected bearer. The udev
+rule turns DAD off on these netdevs at creation; the NM profile
+(carrier-agnostic, no APN — NM/MM pick the APN from
+mobile-broadband-provider-info) gives a fresh install a data connection out
+of the box.
+
+Validated on hardware 2026-10-03 (T-Mobile US, SIM in): profile activates,
+IPv6 address clean, 55-67 ms ping to 2001:4860:4860::8888, DNS + HTTP
+egress over the carrier.
 
 ## Building
 

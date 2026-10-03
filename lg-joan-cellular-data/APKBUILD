@@ -1,0 +1,22 @@
+# Maintainer: Lance <Gero3977@gmail.com>
+maintainer="Lance <Gero3977@gmail.com>"
+pkgname=lg-joan-cellular-data
+pkgver=0.1
+pkgrel=0
+pkgdesc="LG V30 (joan) cellular data defaults — rmnet DAD workaround + NetworkManager profile"
+url="https://github.com/ShapeShifter499/lg-v30-joan-pmos-packages"
+arch="noarch"
+license="MIT"
+depends="networkmanager modemmanager mobile-broadband-provider-info"
+options="!check"
+source="
+	70-joan-rmnet-nodad.rules
+	lg-joan-cellular-data.nmconnection
+	"
+
+package() {
+	install -Dm644 "$srcdir/70-joan-rmnet-nodad.rules" \
+		"$pkgdir/etc/udev/rules.d/70-joan-rmnet-nodad.rules"
+	install -Dm600 "$srcdir/lg-joan-cellular-data.nmconnection" \
+		"$pkgdir/usr/lib/NetworkManager/system-connections/lg-joan-cellular-data.nmconnection"
+}
