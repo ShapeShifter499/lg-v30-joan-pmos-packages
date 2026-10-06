@@ -25,6 +25,7 @@ where they are built from; edit them there first.
 | `joan-imsd/` | `joan-imsd` | 3GPP IMS SIP UA (VoLTE). OpenRC `joan-imsd`, CLI `joan-ims dial` |
 | `lg-joan-volte/` | `lg-joan-volte` | First-boot metapackage: MM + 81voltd + rmtfs + calls + joan-imsd |
 | `lg-joan-cellular-data/` | `lg-joan-cellular-data` | Cellular-data defaults: rmnet DAD-off udev rule + carrier-agnostic NetworkManager profile |
+| `ffmpeg/` | `ffmpeg` (8.1.2-r6, all `ffmpeg-lib*` subpackages) | FFmpeg with the V4L2 patches Firefox needs to hardware-decode video on the Venus block |
 
 A new pmOS user follows `FIRST-INSTALL-VOLTE.md`.
 
@@ -67,6 +68,57 @@ Validated on hardware 2026-10-03 (T-Mobile US, SIM in): profile activates,
 IPv6 address clean, 55-67 ms ping to 2001:4860:4860::8888, DNS + HTTP
 egress over the carrier.
 
+## Why the ffmpeg package exists
+
+joan's Venus video block is a hardware decoder (H.264 and VP9 verified;
+the driver also advertises HEVC, VP8, MPEG-2/4, H.263 and VC-1), exposed by
+the kernel as a standard V4L2 mem2mem decoder. GStreamer uses it
+out of the box (`v4l2h264dec` and friends outrank `avdec_*`, so Showtime
+and anything else built on playbin already decode on Venus). Firefox does
+not, even with `media.hardware-video-decoding.force-enabled`. Its V4L2 path
+goes through the system FFmpeg and was written against the Raspberry Pi
+FFmpeg fork, which does two things stock FFmpeg 8.1 does not:
+
+- **Timestamps.** Firefox sets no timebase on the codec context, so stock
+  `h264_v4l2m2m` hands back every frame with `pts=NOPTS`.
+  `v4l2-m2m-default-timebase.patch` falls back to V4L2's own microsecond
+  unit.
+- **dmabuf output.** Firefox wants `AV_PIX_FMT_DRM_PRIME` frames, which are
+  exported dmabufs it can hand straight to the GPU. Stock v4l2m2m only
+  returns mmap'd NV12, so Firefox decodes one frame, fails with
+  `CreateImageV4L2: V4L2 dmabuf allocation error` and switches to software
+  for the rest of the video. `v4l2-m2m-drmprime.patch` is Lukas Rusak's
+  series as LibreELEC.tv ships it
+  (`packages/multimedia/ffmpeg/patches/v4l2-drmprime`, written for 9.0.2,
+  applied unmodified).
+
+Measured on hardware 2026-10-06 (US998, Firefox 154, 1080p30, steady
+state, 35 s window):
+
+| | dropped frames | decoder CPU | keeps real time |
+|---|---|---|---|
+| H.264, this package | 1.1% | 0.14 core | yes |
+| H.264, stock FFmpeg | 99.5% | 4.43 cores | no (21 s of video per 35 s) |
+| VP9, this package | 0.0% | 0.14 core | yes |
+| VP9, stock FFmpeg | 99.5% | 3.58 cores | no |
+
+Decoded colours match the reference to within 1/255, and frames reach the
+compositor as dmabufs.
+
+Two things to know:
+
+- **Looping or seeking a video needs kernel `linux-lg-joan` r49 or newer**
+  (Venus commit "resume decoding on a seek after a completed drain"; not
+  on GitHub yet as of 2026-10-06). On older kernels a video plays through once in hardware, then drops every
+  frame after the first loop or seek.
+- **This package shadows Alpine's `ffmpeg` by pkgrel.** When Alpine ships
+  a newer ffmpeg, `apk upgrade` replaces this one and Firefox quietly goes
+  back to software decode. Rebase the recipe (copy Alpine's APKBUILD, keep
+  the two V4L2 patches) whenever that happens. `about:support` cannot
+  tell the two apart (it lists HWDEC either way). Check with
+  `apk info -v ffmpeg-libavcodec`, or confirm that Firefox's `RDD Process`
+  holds the `qcom-venus-decoder` `/dev/video*` node open while a video plays.
+
 ## Building
 
 All of these recipes are already in
@@ -96,6 +148,11 @@ Pick the device at `pmbootstrap init`: `joan` pulls `-h930`, `joan-h932` pulls
   boot with the package installed.
 - `joan-imsd` / `lg-joan-volte` — in-tree; pulled by both device packages.
   See `FIRST-INSTALL-VOLTE.md`.
+- `ffmpeg` — lives under `temp/ffmpeg` on `pmaports-lge-joan`, not
+  `device/testing/`. That commit is not pushed yet, so for now this
+  directory is the only public copy.
+  Hardware decode verified in Firefox 154 and with the `ffmpeg` CLI
+  (`h264_v4l2m2m`, 1800 1080p frames in 16 s vs 37 s in software).
 
 ## Related
 
