@@ -26,6 +26,7 @@ where they are built from; edit them there first.
 | `lg-joan-volte/` | `lg-joan-volte` | First-boot metapackage: MM + 81voltd + rmtfs + calls + joan-imsd |
 | `lg-joan-cellular-data/` | `lg-joan-cellular-data` | Cellular-data defaults: rmnet DAD-off udev rule + carrier-agnostic NetworkManager profile |
 | `ffmpeg/` | `ffmpeg` (8.1.2-r6, all `ffmpeg-lib*` subpackages) | FFmpeg with the V4L2 patches Firefox needs to hardware-decode video on the Venus block |
+| `nfc-tags/` | `nfc-tags` | GTK4/libadwaita NFC tag reader/writer on neard's D-Bus API (URL and text NDEF records) |
 
 A new pmOS user follows `FIRST-INSTALL-VOLTE.md`.
 
@@ -147,10 +148,14 @@ Pick the device at `pmbootstrap init`: `joan` pulls `-h930`, `joan-h932` pulls
   depend on it. Profile validated with `alsaucm`; PipeWire still needs one
   boot with the package installed.
 - `joan-imsd` / `lg-joan-volte` — in-tree; pulled by both device packages.
-  See `FIRST-INSTALL-VOLTE.md`.
+  See `FIRST-INSTALL-VOLTE.md`. r5 declines incoming INVITEs with 480 (the
+  network sends callers to voicemail) instead of answering silently; r6 finds
+  the IMS bearer, interface, mux id and WDS service at runtime.
+- `nfc-tags` — in-tree; device-lg-joan (r23+) ships it with neard D-Bus
+  activation. Adapter discovery and the poll loop are bench-tested; reading
+  and writing a physical tag is not yet.
 - `ffmpeg` — lives under `temp/ffmpeg` on `pmaports-lge-joan`, not
-  `device/testing/`. That commit is not pushed yet, so for now this
-  directory is the only public copy.
+  `device/testing/` (pushed 2026-10-07).
   Hardware decode verified in Firefox 154 and with the `ffmpeg` CLI
   (`h264_v4l2m2m`, 1800 1080p frames in 16 s vs 37 s in software).
 
