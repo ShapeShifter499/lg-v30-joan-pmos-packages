@@ -27,6 +27,7 @@ where they are built from; edit them there first.
 | `lg-joan-cellular-data/` | `lg-joan-cellular-data` | Cellular-data defaults: rmnet DAD-off udev rule + carrier-agnostic NetworkManager profile |
 | `ffmpeg/` | `ffmpeg` (8.1.2-r6, all `ffmpeg-lib*` subpackages) | FFmpeg with the V4L2 patches Firefox needs to hardware-decode video on the Venus block |
 | `nfc-tags/` | `nfc-tags` | GTK4/libadwaita NFC tag reader/writer on neard's D-Bus API (URL and text NDEF records) |
+| `gtk4.0/` | `gtk4.0` (4.24.1-r3) | GTK4 with the foreign-EGLDisplay fix so dropping a shutter-sound player can't freeze the Snapshot preview (upstream GNOME/gtk#8456, no upstream fix yet) |
 
 A new pmOS user follows `FIRST-INSTALL-VOLTE.md`.
 
