@@ -27,7 +27,7 @@ where they are built from; edit them there first.
 | `lg-joan-cellular-data/` | `lg-joan-cellular-data` | Cellular-data defaults: rmnet DAD-off udev rule + carrier-agnostic NetworkManager profile |
 | `ffmpeg/` | `ffmpeg` (8.1.2-r6, all `ffmpeg-lib*` subpackages) | FFmpeg with the V4L2 patches Firefox needs to hardware-decode video on the Venus block |
 | `nfc-tags/` | `nfc-tags` | GTK4/libadwaita NFC tag reader/writer on neard's D-Bus API (URL and text NDEF records) |
-| `fm-radio/` | `fm-radio` (0.1-r0) | GTK4/libadwaita FM tuner for a V4L2 radio receiver (`/dev/radio0`): tune, hardware seek, signal, stereo flag, RDS name and radiotext, presets. No sound yet: the kernel has no FM audio capture path |
+| `fm-radio/` | `fm-radio` (0.1-r0) | GTK4/libadwaita FM tuner for a V4L2 radio receiver (`/dev/radio0`): tune, hardware seek, signal, stereo flag, RDS name and radiotext, presets. No sound yet: the kernel's FM audio path is ported but switched off (it hung the phone at boot) |
 | `gtk4.0/` | `gtk4.0` (4.24.1-r3) | GTK4 with the foreign-EGLDisplay fix so dropping a shutter-sound player can't freeze the Snapshot preview (upstream GNOME/gtk#8456, no upstream fix yet) |
 
 A new pmOS user follows `FIRST-INSTALL-VOLTE.md`.
@@ -160,8 +160,10 @@ Pick the device at `pmbootstrap init`: `joan` pulls `-h930`, `joan-h932` pulls
   device-lg-joan (r27+) depends on it, so a default joan image installs it.
   Bench-tested 2026-11-13 on a US998 with wired headphones as the antenna:
   a seek sweep found 14 stations, and RDS gave the station name and
-  radiotext. It plays no sound: the WCN3990 sends FM audio over SLIMbus and
-  the mainline kernel has no driver for that link yet, so the app says so.
+  radiotext. It plays no sound: the WCN3990 sends FM audio over a second
+  SLIMbus engine. The joan kernel has the driver (ported 2026-10-02) but
+  keeps that engine disabled, because enabling it hung the phone about 10 s
+  into boot. Until that is solved ALSA has no FM capture device.
 - `ffmpeg` — lives under `temp/ffmpeg` on `pmaports-lge-joan`, not
   `device/testing/` (pushed 2026-10-07).
   Hardware decode verified in Firefox 154 and with the `ffmpeg` CLI
