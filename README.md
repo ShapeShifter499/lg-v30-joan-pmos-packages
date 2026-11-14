@@ -27,7 +27,7 @@ where they are built from; edit them there first.
 | `lg-joan-cellular-data/` | `lg-joan-cellular-data` | Cellular-data defaults: rmnet DAD-off udev rule + carrier-agnostic NetworkManager profile |
 | `ffmpeg/` | `ffmpeg` (8.1.2-r6, all `ffmpeg-lib*` subpackages) | FFmpeg with the V4L2 patches Firefox needs to hardware-decode video on the Venus block |
 | `nfc-tags/` | `nfc-tags` | GTK4/libadwaita NFC tag reader/writer on neard's D-Bus API (URL and text NDEF records) |
-| `fm-radio/` | `fm-radio` (0.1-r0) | GTK4/libadwaita FM tuner for a V4L2 radio receiver (`/dev/radio0`): tune, hardware seek, signal, stereo flag, RDS name and radiotext, presets. No sound yet: the kernel's FM audio path is ported but switched off (it hung the phone at boot) |
+| `fm-radio/` | `fm-radio` (0.2-r0) | GTK4/libadwaita FM radio for a V4L2 receiver (`/dev/radio0`): tune, hardware seek, signal, stereo flag, RDS name and radiotext, presets. From 0.2: plays the station to any output of the sound server (so the speaker works with headphones plugged in as the antenna), records to FLAC, WAV, Opus, MP3, Ogg Vorbis or AAC, and can save RDS next to a recording as a text log plus the raw data. Sound needs `linux-lg-joan` r30 and `alsa-ucm-conf-lg-joan` r15 from the pmaports fork (the copy of the sound profile in this repo is older); without them the app still tunes and says that sound is not available |
 | `gtk4.0/` | `gtk4.0` (4.24.1-r3) | GTK4 with the foreign-EGLDisplay fix so dropping a shutter-sound player can't freeze the Snapshot preview (upstream GNOME/gtk#8456, no upstream fix yet) |
 
 A new pmOS user follows `FIRST-INSTALL-VOLTE.md`.
